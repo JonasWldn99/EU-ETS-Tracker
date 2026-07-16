@@ -81,6 +81,7 @@
   .member-card .stakeholder-name { font-size: 13px; }
   .stakeholder-tag { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); white-space: nowrap; }
   .stakeholder-role { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+  .role-hover { cursor: help; border-bottom: 1px dotted rgba(139,147,163,0.6); }
   .bloc-members { font-size: 11px; color: var(--text-tertiary); margin-top: 5px; line-height: 1.6; }
   .stance-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
   .stance-chip { font-family: var(--font-mono); font-size: 9px; font-weight: 500; padding: 3px 6px; border-radius: 4px; background: rgba(255,255,255,0.03); color: var(--text-tertiary); border: 1px solid var(--border); cursor: default; letter-spacing: 0.02em; }
@@ -1551,7 +1552,7 @@ DOSSIERS = {
             "name": "Peter Liese",
             "group": "EPP",
             "country": "DE",
-            "role": "EPP Coordinator, ENVI · CONFIRMED 15 Jul 2026 as Parliament's lead negotiator (rapporteur) for the 2026 ETS1 revision itself (Carbon Pulse) \u2014 the companion free-allocation benchmarks file will be led separately by Adam Jarubas (EPP, PL, not yet individually tracked \u2014 propose-only per \u00a72). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.",
+            "role": "EPP Coordinator, ENVI · <span class=\"role-hover\" title=\"Confirmed 15 Jul 2026 (Carbon Pulse) as Parliament's lead negotiator for the ETS1 revision itself; the companion free-allocation benchmarks file will be led separately by Adam Jarubas (EPP, PL — not yet individually tracked, propose-only per §2). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.\">ETS1 Rapporteur (confirmed 15 Jul 2026)</span>",
             "parentId": "germany-epp-delegation",
             "stances": {
               "msr": {
@@ -7470,7 +7471,7 @@ DOSSIERS = {
             "name": "Italy",
             "group": "Government position",
             "country": "Italy",
-            "role": "Position on most topics not yet assessed",
+            "role": "Signatory, 10-country joint statement (14 Jul 2026, with PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision",
             "weight": 58.934,
             "stances": {
               "freealloc": {
@@ -7486,6 +7487,14 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "note": "E.ON internal intel table (Jonas), Jul 2026 — Italy favours measures to tackle speculation, i.e. opposes E.ON's no-new-restrictions position."
+              },
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Lead signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be reconsidered within the 17 July revision — opposes E.ON's no-further-delay ask. Also called (with the other 9) for more free CO2 permits without broad conditions, corroborating Italy's existing FREEALLOC=support stance."
               },
               "ets1general": {
                 "stance": "oppose",
@@ -7694,7 +7703,7 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030."
+                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Reinforced by a fresh 10-country joint statement (Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania, Slovakia) shared with the Commission 14 Jul 2026 and reported by Reuters (Kate Abnett) 15 Jul 2026, calling for ETS2 to be ‘carefully reconsidered’ within the 17 July revision."
               },
               "ets1general": {
                 "stance": "neutral",
@@ -7747,7 +7756,7 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030."
+                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Reinforced by a fresh 10-country joint statement (Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania, Slovakia) shared with the Commission 14 Jul 2026 and reported by Reuters (Kate Abnett) 15 Jul 2026, calling for ETS2 to be ‘carefully reconsidered’ within the 17 July revision."
               },
               "ets1general": {
                 "stance": "oppose",
@@ -7772,6 +7781,14 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "note": "E.ON internal intel table (Jonas), Jul 2026."
+              },
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be \u2018carefully reconsidered\u2019 in the 17 July ETS1 revision \u2014 opposes E.ON's no-further-delay ask. Previously untracked on this topic despite role text flagging Romania as a 2025 non-paper signatory \u2014 gap closed this run."
               },
               "indirect": {
                 "stance": "support",
@@ -7817,7 +7834,7 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. See leverage-behaviour caution in role field."
+                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Reinforced by a fresh 10-country joint statement (Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania, Slovakia) shared with the Commission 14 Jul 2026 and reported by Reuters (Kate Abnett) 15 Jul 2026, calling for ETS2 to be ‘carefully reconsidered’ within the 17 July revision. See leverage-behaviour caution in role field."
               },
               "ets1general": {
                 "stance": "oppose",
@@ -7856,7 +7873,7 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "manual",
                 "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. See leverage-behaviour caution in role field."
+                "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Reinforced by a fresh 10-country joint statement (Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania, Slovakia) shared with the Commission 14 Jul 2026 and reported by Reuters (Kate Abnett) 15 Jul 2026, calling for ETS2 to be ‘carefully reconsidered’ within the 17 July revision. See leverage-behaviour caution in role field."
               },
               "ets1general": {
                 "stance": "neutral",
@@ -7911,12 +7928,28 @@ DOSSIERS = {
           {
             "id": "greece",
             "name": "Greece",
-            "group": "Not tracked",
+            "group": "Government position",
             "country": "Greece",
-            "role": "Not individually tracked by E.ON (outside current scope) — seat/population weight still counted in the Council pie for an accurate denominator, shown as permanent \"no data.\"",
+            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 10.409,
-            "hideFromList": true,
-            "stances": {}
+            "stances": {
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be \u2018carefully reconsidered\u2019 within the 17 July revision \u2014 opposes E.ON's no-further-delay ask."
+              },
+              "freealloc": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Same statement explicitly calls for the EU to give industries more free CO2 permits without broad conditions \u2014 directionally aligned with E.ON's slower/less-conditioned free-allocation ask, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach."
+              }
+            }
           },
           {
             "id": "austria",
@@ -7931,12 +7964,28 @@ DOSSIERS = {
           {
             "id": "bulgaria",
             "name": "Bulgaria",
-            "group": "Not tracked",
+            "group": "Government position",
             "country": "Bulgaria",
-            "role": "Not individually tracked by E.ON (outside current scope) — seat/population weight still counted in the Council pie for an accurate denominator, shown as permanent \"no data.\"",
+            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 6.437,
-            "hideFromList": true,
-            "stances": {}
+            "stances": {
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be \u2018carefully reconsidered\u2019 within the 17 July revision \u2014 opposes E.ON's no-further-delay ask."
+              },
+              "freealloc": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Same statement explicitly calls for the EU to give industries more free CO2 permits without broad conditions \u2014 directionally aligned with E.ON's slower/less-conditioned free-allocation ask, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach."
+              }
+            }
           },
           {
             "id": "denmark",
@@ -8053,22 +8102,54 @@ DOSSIERS = {
           {
             "id": "estonia",
             "name": "Estonia",
-            "group": "Not tracked",
+            "group": "Government position",
             "country": "Estonia",
-            "role": "Not individually tracked by E.ON (outside current scope) — seat/population weight still counted in the Council pie for an accurate denominator, shown as permanent \"no data.\"",
+            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 1.37,
-            "hideFromList": true,
-            "stances": {}
+            "stances": {
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be \u2018carefully reconsidered\u2019 within the 17 July revision \u2014 opposes E.ON's no-further-delay ask."
+              },
+              "freealloc": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Same statement explicitly calls for the EU to give industries more free CO2 permits without broad conditions \u2014 directionally aligned with E.ON's slower/less-conditioned free-allocation ask, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach."
+              }
+            }
           },
           {
             "id": "cyprus",
             "name": "Cyprus",
-            "group": "Not tracked",
+            "group": "Government position",
             "country": "Cyprus",
-            "role": "Not individually tracked by E.ON (outside current scope) — seat/population weight still counted in the Council pie for an accurate denominator, shown as permanent \"no data.\"",
+            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 0.98,
-            "hideFromList": true,
-            "stances": {}
+            "stances": {
+              "ets2delay": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Signatory, 10-country joint statement to the Commission (14 Jul 2026, reported by Reuters/Kate Abnett 15 Jul 2026) urging ETS2 be \u2018carefully reconsidered\u2019 within the 17 July revision \u2014 opposes E.ON's no-further-delay ask."
+              },
+              "freealloc": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/",
+                "note": "Same statement explicitly calls for the EU to give industries more free CO2 permits without broad conditions \u2014 directionally aligned with E.ON's slower/less-conditioned free-allocation ask, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach."
+              }
+            }
           },
           {
             "id": "luxembourg",
@@ -8299,7 +8380,7 @@ DOSSIERS = {
       }
     ],
     "overview": {
-      "background": "The Commission is preparing a comprehensive review of the EU ETS1, expected 17 July 2026 — the first of a package of proposals to strengthen the EU's economic resilience and competitiveness while delivering the 2040 climate target. It runs alongside a separate, already-tabled targeted proposal (COM(2026)153, 1 April 2026) to stop the automatic invalidation of allowances in the Market Stability Reserve, and will be accompanied on the same day by a dedicated third proposal to increase free allocation via revised sector-specific 'fallback benchmarks' (announced by Executive VP Séjourné, 26 Jun 2026, with the Commission seeking retroactive effect and rapid co-legislator agreement). Together, these will reshape the post-2030 emissions trading framework: the pace of the cap (LRF), the design of price-stability tools (MSR, Art. 29a), the future of free allocation and carbon-leakage protection, the interaction with CBAM, and how new instruments like the Investment Booster are financed. The European Council (19 March 2026) instructed the Commission to present the review \"by July 2026 at the latest\"; the proposal is now expected 17 July 2026. Council, Parliament and Commission have set Q1 2027 as their joint target for political agreement, though the Irish Presidency has floated a more ambitious 11 December 2026 target for political agreement in principle at Environment Council. Argus (10 Jul 2026, citing EU officials briefed 8 Jul) and S&P Global Platts (document seen ahead of the 10 Jun Commission orientation meeting) add granularity on the Commission's direction of travel: the LRF currently stands at 4.3%/yr (2024-27) rising to 4.4%/yr from 2028; an EU official said the rate \"cannot be reduced too drastically\" so as not to \"penalise the frontrunners\" — i.e. the Commission itself is applying the early-mover logic (see §7.2) to argue against an overly aggressive LRF cut, in some tension with EPP/E.ON's 3.4% ask. On MSR, the Commission has confirmed any changes will stay rule- and volume-based (adjusted thresholds), not price-triggered — aligned with E.ON's no-discretionary-intervention ask. On free allocation, officials confirmed a slower phase-out beyond 2034 is under consideration for CBAM-exposed sectors (no additional allowances before 2034, but an extended tail after), and a companion fallback-benchmarks act could add roughly €6bn in free allowances for the rest of phase 4 (to 2030) — both aligned with E.ON. A proposed minimum-earmarking rule forcing Member States to redirect more ETS revenue into sectoral decarbonisation is seen by officials as the most contentious element, likely to face Member State resistance (only ~5% of the ~78% of historical revenue going to national budgets has gone to industrial decarbonisation). The €30bn Investment Booster (financed via 400mn EUAs, first-come-first-served, light eligibility checks) is confirmed to launch before 2030. Given the direct bearing on E.ON's cost base and investment case for the 2030s, this is one of the highest-stakes EU energy policy files currently in motion.",
+      "background": "The Commission is preparing a comprehensive review of the EU ETS1, expected 17 July 2026 — the first of a package of proposals to strengthen the EU's economic resilience and competitiveness while delivering the 2040 climate target. It runs alongside a separate, already-tabled targeted proposal (COM(2026)153, 1 April 2026) to stop the automatic invalidation of allowances in the Market Stability Reserve, and will be accompanied on the same day by a dedicated third proposal to increase free allocation via revised sector-specific 'fallback benchmarks' (announced by Executive VP Séjourné, 26 Jun 2026, with the Commission seeking retroactive effect and rapid co-legislator agreement). Together, these will reshape the post-2030 emissions trading framework: the pace of the cap (LRF), the design of price-stability tools (MSR, Art. 29a), the future of free allocation and carbon-leakage protection, the interaction with CBAM, and how new instruments like the Investment Booster are financed. The European Council (19 March 2026) instructed the Commission to present the review \"by July 2026 at the latest\"; the proposal is now expected 17 July 2026. Council, Parliament and Commission have set Q1 2027 as their joint target for political agreement, though the Irish Presidency has floated a more ambitious 11 December 2026 target for political agreement in principle at Environment Council. Argus (10 Jul 2026, citing EU officials briefed 8 Jul) and S&P Global Platts (document seen ahead of the 10 Jun Commission orientation meeting) add granularity on the Commission's direction of travel: the LRF currently stands at 4.3%/yr (2024-27) rising to 4.4%/yr from 2028; an EU official said the rate \"cannot be reduced too drastically\" so as not to \"penalise the frontrunners\" — i.e. the Commission itself is applying the early-mover logic (see §7.2) to argue against an overly aggressive LRF cut, in some tension with EPP/E.ON's 3.4% ask. On MSR, the Commission has confirmed any changes will stay rule- and volume-based (adjusted thresholds), not price-triggered — aligned with E.ON's no-discretionary-intervention ask. On free allocation, officials confirmed a slower phase-out beyond 2034 is under consideration for CBAM-exposed sectors (no additional allowances before 2034, but an extended tail after), and a companion fallback-benchmarks act could add roughly €6bn in free allowances for the rest of phase 4 (to 2030) — both aligned with E.ON. A proposed minimum-earmarking rule for ETS revenue is seen by officials as the most contentious element, likely to face Member State resistance. On 15 July, ten Member States (Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania, Slovakia) sent a joint statement to the Commission, reported by Reuters, demanding ETS2 be ‘carefully reconsidered’ in the revision and free allocation expanded without investment-linked conditions — a direct clash with Germany/Sweden that creates a real blocking-minority risk for the Commission's conditionality approach. The €30bn Investment Booster (financed via 400mn EUAs, first-come-first-served, light eligibility checks) is confirmed to launch before 2030. Given the direct bearing on E.ON's cost base and investment case for the 2030s, this is one of the highest-stakes EU energy policy files currently in motion.",
       "milestones": [
         {
           "date": "2026-07-17",
@@ -8389,7 +8470,7 @@ DOSSIERS = {
         "instrument": "EU Carbon Permits — EEX-linked EUA benchmark (Trading Economics aggregation)",
         "sourceLabel": "Trading Economics",
         "sourceUrl": "https://tradingeconomics.com/commodity/carbon",
-        "asOfDate": "2026-07-10",
+        "asOfDate": "2026-07-15",
         "history": [
           {
             "date": "2025-07-11",
@@ -8445,18 +8526,22 @@ DOSSIERS = {
           {
             "date": "2026-07-10",
             "price": 79.1
+          },
+          {
+            "date": "2026-07-15",
+            "price": 80.89
           }
         ],
-        "methodologyNote": "Chart always shows a trailing 12-month window (today back to this date last year) — older points drop off as new ones are logged each morning update, so the series stays exactly one year long. 11 of 13 points are dated, same-day Trading Economics 'X-week high/low' prints, each opened and dateline-checked before use (a same-day search misattributed a 22 Jun 2026 figure to 9 Jul 2026 during the 11 Jul run, corrected after verification): 2026-02-12 (23-week low, lowest since Sep 2025), 2026-03-02 (42-week low, lowest since May 2025), 2026-04-01/04-16/05-26 (weekly-high prints), plus the Jun-Jul 2026 points already logged. 2025-12-15 (+3% MoM/+30% YoY) is from carboncredits.com. Only 2025-07-11 and 2025-09-15 remain approx:true (no single dated print found; interpolated from the EU Commission's reported 2025 EUR60-80 range and the implied Sep-2025 level from the Feb-2026 '23-week low' comparison) \u2014 the 2026-01-15 peak is also approx:true (gmk.center reported 'exceeded EUR90' without an exact date/price). Day-over-day change shown in the UI is always computed from the two most recent logged points, never copied from source-site percentage text."
+        "methodologyNote": "Chart always shows a trailing 12-month window (today back to this date last year) — older points drop off as new ones are logged each morning update, so the series stays exactly one year long. 11 of 13 points are dated, same-day Trading Economics 'X-week high/low' prints, each opened and dateline-checked before use (a same-day search misattributed a 22 Jun 2026 figure to 9 Jul 2026 during the 11 Jul run, corrected after verification): 2026-02-12 (23-week low, lowest since Sep 2025), 2026-03-02 (42-week low, lowest since May 2025), 2026-04-01/04-16/05-26 (weekly-high prints), plus the Jun-Jul 2026 points already logged. 2025-12-15 (+3% MoM/+30% YoY) is from carboncredits.com. Only 2025-07-11 and 2025-09-15 remain approx:true (no single dated print found; interpolated from the EU Commission's reported 2025 EUR60-80 range and the implied Sep-2025 level from the Feb-2026 '23-week low' comparison) \u2014 the 2026-01-15 peak is also approx:true (gmk.center reported 'exceeded EUR90' without an exact date/price). 2026-07-15 (€80.89) is the first point captured via the Claude in Chrome connector reading the live, JS-rendered Trading Economics page directly — a static (non-browser) fetch of the identical URL returns a stale cached snapshot with no July data at all, confirmed side-by-side same day; the Chrome-rendered read is now the preferred daily method whenever the connector is available. Day-over-day change shown in the UI is always computed from the two most recent logged points, never copied from source-site percentage text."
       },
       "headlineOfDay": [
         {
           "date": "2026-07-15",
-          "headline": "Peter Liese confirmed as Parliament's lead negotiator for the ETS1 revision; Adam Jarubas (EPP, PL) to lead the parallel free-allocation benchmarks file",
-          "summary": "Carbon Pulse confirmed Wednesday that EPP's Peter Liese (E.ON's most consistently engaged ENVI Coordinator on this file) will lead European Parliament negotiations on the Commission's ETS1 revision once tabled Friday, with the companion sector-benchmarks/free-allocation proposal to be negotiated separately by fellow EPP member Adam Jarubas (Poland). Separately, Sweden and Finland's prime ministers publicly pressed the Commission to keep ETS emission cuts \u201cclose to 90%\u201d and keep the burden on the carbon market rather than national targets or forest sinks \u2014 reinforcing, at head-of-government level, the LRF-related stance already tracked for both countries. EUAs eased Wednesday as funds trimmed net length into Friday's proposal, a reversal after three straight days of speculative-length-driven gains Mon-Wed.",
-          "impactNote": "The Liese/Jarubas confirmation is the most consequential development of the week for E.ON's engagement plan: it fixes exactly who leads Parliament-side negotiations on both the core ETS1 file and the free-allocation benchmarks companion file \u2014 both central to E.ON's LRF and FREEALLOC asks. Worth flagging as a concrete next-step trigger: outreach to Jarubas's office is now warranted given his direct benchmarks/free-allocation mandate.",
-          "sourceLabel": "Carbon Pulse",
-          "sourceUrl": "https://carbon-pulse.com/531768/"
+          "headline": "Ten Member States (incl. 5 tracked Council countries) tell the Commission ETS2 must be \u2018carefully reconsidered\u2019 in the 17 July revision",
+          "summary": "Reuters (Kate Abnett) reported that Italy, Poland, Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Romania and Slovakia sent a joint statement to the Commission on 14 July \u2014 shared ahead of Friday's proposal \u2014 demanding ETS2 (the 2028 fuel/heating carbon price) be directly addressed and \u2018carefully reconsidered\u2019, and that industry receive more free CO2 permits without the Commission's proposed investment-linked conditions. The bloc has enough Council votes to block amendments it opposes, setting up a direct clash with Germany and Sweden, who back ETS2 as designed. Separately, Carbon Pulse confirmed Peter Liese (EPP, DE) as Parliament's lead negotiator for the ETS1 revision itself, with fellow EPP member Adam Jarubas (Poland) to lead the parallel free-allocation benchmarks file; Sweden and Finland's PMs separately pressed the Commission to keep ETS cuts \u2018close to 90 percent\u2019 on the carbon market rather than national targets. EUAs eased Wednesday as funds trimmed net length into Friday's proposal.",
+          "impactNote": "This is the clearest concrete evidence yet of a blocking coalition on ETS2/FREEALLOC conditionality \u2014 five of E.ON's 11 tracked Council countries (Poland, Czechia, Romania, Hungary, Slovakia) plus Italy are now on record, alongside four newly-promoted signatories (Bulgaria, Cyprus, Estonia, Greece). The free-allocation ask (no broad conditions) is directionally aligned with E.ON's own FREEALLOC position, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach \u2014 a nuance worth watching as the file develops. The Liese/Jarubas negotiator confirmation remains separately important: outreach to Jarubas's office is warranted given his direct benchmarks/free-allocation mandate.",
+          "sourceLabel": "Reuters (Kate Abnett)",
+          "sourceUrl": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/"
         },
         {
           "date": "2026-07-14",
