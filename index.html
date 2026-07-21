@@ -11,7 +11,7 @@
     --border: #383F4C; --text-primary: #E8E6E1; --text-secondary: #9AA0AC; --text-tertiary: #6B7280;
     --ep: #D4A24C; --comm: #5B84B1; --council: #4C9A8C;
     --support: #7FB069; --oppose: #C1554B; --neutral: #8B93A3; --unclear: #4A5160;
-    --tone-toofar: #E8998D; --tone-notenough: #7A2E27;
+    --tone-toofar: #E8998D; --tone-notenough: #E0453B;
     --font-display: 'Source Serif 4', Georgia, serif;
     --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
     --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
@@ -249,18 +249,25 @@
   .reaction-tone-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 10px 4px 16px; }
   .reaction-tone-legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
   .reaction-tone-swatch { width: 10px; height: 10px; border-radius: 2px; }
-  .reaction-snapshot { display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 24px; align-items: start; margin: 14px 4px 20px; padding: 16px 18px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; }
-  @media (max-width: 900px) { .reaction-snapshot { grid-template-columns: 1fr; } }
-  .reaction-snapshot-chart { display: flex; align-items: center; gap: 18px; }
-  .reaction-pie { width: 92px; height: 92px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px var(--border); }
-  .reaction-pie-legend { display: flex; flex-direction: column; gap: 7px; }
-  .pie-legend-item { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--text-secondary); line-height: 1.4; }
-  .pie-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-  .reaction-snapshot-criticisms { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 650px) { .reaction-snapshot-criticisms { grid-template-columns: 1fr; } }
-  .criticism-col-title { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-  .criticism-list { margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.55; color: var(--text-secondary); }
-  .criticism-list li { margin-bottom: 6px; }
+  .reaction-feed-top { display: grid; grid-template-columns: 1fr auto; gap: 36px; align-items: center; margin: 10px 4px 22px; }
+  @media (max-width: 980px) { .reaction-feed-top { grid-template-columns: 1fr; } }
+  .reaction-pie-block { display: flex; align-items: center; gap: 28px; justify-self: end; }
+  @media (max-width: 980px) { .reaction-pie-block { justify-self: start; } }
+  .reaction-pie-wrap { position: relative; width: 216px; height: 216px; flex-shrink: 0; }
+  .reaction-pie { width: 216px; height: 216px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--border); }
+  .reaction-pie-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 132px; height: 132px; border-radius: 50%; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; flex-direction: column; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+  .reaction-pie-hole-count { font-family: var(--font-display); font-size: 40px; font-weight: 600; color: var(--text-primary); line-height: 1; }
+  .reaction-pie-hole-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 5px; }
+  .reaction-pie-legend { display: flex; flex-direction: column; gap: 11px; }
+  .pie-legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary); line-height: 1.4; white-space: nowrap; }
+  .pie-swatch { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+  .reaction-criticisms-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; margin: 0 4px 22px; padding: 20px 26px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; }
+  @media (max-width: 650px) { .reaction-criticisms-row { grid-template-columns: 1fr; } }
+  .criticism-col-title { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .criticism-col-title--toofar { color: var(--tone-toofar); border-bottom-color: rgba(232,153,141,0.35); }
+  .criticism-col-title--notenough { color: var(--tone-notenough); border-bottom-color: rgba(224,69,59,0.4); }
+  .criticism-list { margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.6; color: var(--text-secondary); }
+  .criticism-list li { margin-bottom: 7px; }
   .reaction-card2-critique { font-family: var(--font-mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin-bottom: 5px; }
   .reaction-card2-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
   .reaction-actor2 { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
@@ -1410,7 +1417,7 @@ function reactionCard2HTML(r) {
   </div>`;
 }
 
-function reactionSnapshotHTML(d) {
+function reactionToneBuckets(d) {
   const r = d.reactions || {};
   const all = [].concat(r.institutional || [], r.business || [], r.ngoThinkTank || []);
   const buckets = { welcome: [], toofar: [], notenough: [], mixed: [] };
@@ -1420,7 +1427,12 @@ function reactionSnapshotHTML(d) {
     else if (x.stance === 'oppose') buckets.toofar.push(x);
     else buckets.mixed.push(x);
   });
-  const total = all.length || 1;
+  return { buckets, total: all.length };
+}
+
+function reactionPieBlockHTML(d) {
+  const { buckets, total: rawTotal } = reactionToneBuckets(d);
+  const total = rawTotal || 1;
   const pct = n => Math.round((n / total) * 1000) / 10;
   const segments = [
     { color: 'var(--support)', count: buckets.welcome.length },
@@ -1439,30 +1451,35 @@ function reactionSnapshotHTML(d) {
   const gradient = parts.length ? parts.join(', ') : 'var(--neutral) 0deg 360deg';
 
   const legendHTML = `
-    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--support)"></span>Welcomes the proposal — ${buckets.welcome.length} of ${total} (${pct(buckets.welcome.length)}%)</div>
-    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-toofar)"></span>Critical — weakens the ETS too much — ${buckets.toofar.length} of ${total} (${pct(buckets.toofar.length)}%)</div>
-    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-notenough)"></span>Critical — not far enough on competitiveness — ${buckets.notenough.length} of ${total} (${pct(buckets.notenough.length)}%)</div>
-    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--neutral)"></span>Mixed reaction — ${buckets.mixed.length} of ${total} (${pct(buckets.mixed.length)}%)</div>`;
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--support)"></span>Welcomes the proposal — ${buckets.welcome.length} of ${rawTotal} (${pct(buckets.welcome.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-toofar)"></span>Critical — weakens the ETS too much — ${buckets.toofar.length} of ${rawTotal} (${pct(buckets.toofar.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-notenough)"></span>Critical — not far enough on competitiveness — ${buckets.notenough.length} of ${rawTotal} (${pct(buckets.notenough.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--neutral)"></span>Mixed reaction — ${buckets.mixed.length} of ${rawTotal} (${pct(buckets.mixed.length)}%)</div>`;
 
+  return `<div class="reaction-pie-block">
+    <div class="reaction-pie-wrap">
+      <div class="reaction-pie" style="background: conic-gradient(${gradient});"></div>
+      <div class="reaction-pie-hole"><div class="reaction-pie-hole-count">${rawTotal}</div><div class="reaction-pie-hole-label">tracked</div></div>
+    </div>
+    <div class="reaction-pie-legend">${legendHTML}</div>
+  </div>`;
+}
+
+function reactionCriticismsRowHTML(d) {
+  const r = d.reactions || {};
   const cs = r.criticismSummary || { tooFar: [], notFarEnough: [] };
   const listHTML = arr => (arr && arr.length)
     ? `<ol class="criticism-list">${arr.map(x => `<li>${x}</li>`).join('')}</ol>`
     : `<div class="reaction-empty">Not enough tracked reactions yet to identify a pattern.</div>`;
 
-  return `<div class="reaction-snapshot">
-    <div class="reaction-snapshot-chart">
-      <div class="reaction-pie" style="background: conic-gradient(${gradient});"></div>
-      <div class="reaction-pie-legend">${legendHTML}</div>
+  return `<div class="reaction-criticisms-row">
+    <div class="criticism-col">
+      <div class="criticism-col-title criticism-col-title--toofar">Top criticisms — "goes too far" (weakens the ETS)</div>
+      ${listHTML(cs.tooFar)}
     </div>
-    <div class="reaction-snapshot-criticisms">
-      <div class="criticism-col">
-        <div class="criticism-col-title">Top criticisms — "goes too far" (weakens the ETS)</div>
-        ${listHTML(cs.tooFar)}
-      </div>
-      <div class="criticism-col">
-        <div class="criticism-col-title">Top criticisms — "doesn't go far enough" (competitiveness)</div>
-        ${listHTML(cs.notFarEnough)}
-      </div>
+    <div class="criticism-col">
+      <div class="criticism-col-title criticism-col-title--notenough">Top criticisms — "doesn't go far enough" (competitiveness)</div>
+      ${listHTML(cs.notFarEnough)}
     </div>
   </div>`;
 }
@@ -1495,8 +1512,11 @@ function renderReactionFeed(d) {
   const r = d.reactions || {};
   return `<div class="reaction-feed">
     <div class="reaction-feed-title">Stakeholder Reactions to the Commission Proposal</div>
-    <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per category by default; use "Show more" to see the rest. Colour here reflects each stakeholder's own overall tone toward the Commission's proposal (welcoming / critical / mixed) — a different axis from the Aligned-with-E.ON / Opposed-to-E.ON colouring used in the official table below and in the other two tabs, so it can never be mistaken for an official alignment verdict.</div>
-    ${reactionSnapshotHTML(d)}
+    <div class="reaction-feed-top">
+      <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per category by default; use "Show more" to see the rest. Colour here reflects each stakeholder's own overall tone toward the Commission's proposal (welcoming / critical / mixed) — a different axis from the Aligned-with-E.ON / Opposed-to-E.ON colouring used in the official table below and in the other two tabs, so it can never be mistaken for an official alignment verdict.</div>
+      ${reactionPieBlockHTML(d)}
+    </div>
+    ${reactionCriticismsRowHTML(d)}
     <div class="reaction-tone-legend">
       <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--support)"></span>Generally welcomes the proposal</div>
       <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--oppose)"></span>Generally criticises the proposal</div>
@@ -1771,8 +1791,8 @@ DOSSIERS = {
       "stance": "oppose",
       "critiqueType": "tooWeak",
       "text": "“Out of Balance” policy brief (Graichen, Gores, Cludius, Wissner, Matthes) warns of significant allowance oversupply 2031–2040 from the lower LRF combined with Investment Booster/CDR allowances and MSR carry-over; recommends the LRF stay at 4.4% until 2035 at least — directly opposed to E.ON's ask. Estimates free-allocation value rising ~24% (~€80bn) by 2050.",
-      "source": "Öko-Institut policy brief, \"Out of Balance\" (internal document, Source Documents folder — no public URL found as of 21 Jul 2026 despite a dedicated online search)",
-      "url": null,
+      "source": "Öko-Institut, \"Out of Balance — Assessing the 2026 Commission proposal for the EU ETS 1\"",
+      "url": "https://www.oeko.de/publikation/assessing-the-2026-commission-proposal-for-the-eu-ets-1/",
       "date": "2026-07-19",
       "topics": [
         "LRF",
