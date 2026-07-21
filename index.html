@@ -194,6 +194,45 @@
   .ep-mode-select:focus { outline: 1px solid var(--ep); border-radius: 3px; }
   .ep-mode-select option { background: var(--surface); color: var(--text-primary); text-transform: none; }
 
+  /* ---- Co-Decision Tracker view ---- */
+  .cd-intro { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); line-height: 1.6; margin: 4px 4px 18px; max-width: 980px; }
+  .cd-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .cd-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  .cd-table th { text-align: left; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); background: var(--surface-raised); padding: 12px 14px; position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+  .cd-table th.cd-col-topic { width: 22%; }
+  .cd-table th.cd-col-data { width: 26%; }
+  .cd-eon-grade-badge { display: inline-block; margin-top: 8px; }
+  .cd-voice-name { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+  .cd-voice-role { font-weight: 400; color: var(--text-tertiary); font-size: 10px; }
+  .cd-voice-additional { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.08); }
+  .cd-expand-toggle { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); cursor: pointer; margin-top: 8px; user-select: none; }
+  .cd-expand-toggle:hover { color: var(--text-primary); }
+  .cd-row + .cd-row td { border-top: 1px solid var(--border); }
+  .cd-row:hover td { background: rgba(255,255,255,0.015); }
+  .cd-topic-cell { padding: 14px; vertical-align: top; background: var(--surface); }
+  .cd-topic-code { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); letter-spacing: 0.04em; display: block; margin-bottom: 4px; }
+  .cd-topic-label { font-size: 12.5px; color: var(--text-primary); font-weight: 500; line-height: 1.4; }
+  .cd-cell { padding: 12px 14px; vertical-align: top; }
+  .cd-cell-inner { border-radius: 8px; padding: 10px 12px; height: 100%; }
+  .cd-cell-inner.cd-support { background: rgba(127,176,105,0.10); border: 1px solid rgba(127,176,105,0.30); }
+  .cd-cell-inner.cd-oppose  { background: rgba(193,85,75,0.10); border: 1px solid rgba(193,85,75,0.30); }
+  .cd-cell-inner.cd-neutral { background: rgba(139,147,163,0.12); border: 1.5px solid rgba(139,147,163,0.4); }
+  .cd-cell-inner.cd-pending { background: rgba(255,255,255,0.02); border: 1px dashed var(--border); }
+  .cd-cell-inner.cd-interim { background: rgba(212,163,71,0.08); border: 1px dashed rgba(212,163,71,0.45); }
+  .cd-status-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .cd-badge { font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+  .cd-badge.cd-support { background: rgba(127,176,105,0.22); color: var(--support); }
+  .cd-badge.cd-oppose  { background: rgba(193,85,75,0.22); color: var(--oppose); }
+  .cd-badge.cd-neutral { background: rgba(139,147,163,0.25); color: #C3C9D4; }
+  .cd-badge.cd-pending { background: rgba(255,255,255,0.06); color: var(--text-tertiary); }
+  .cd-badge.cd-interim { background: rgba(212,163,71,0.22); color: #D4A347; }
+  .cd-grade { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+  .cd-cell-text { font-size: 11.5px; line-height: 1.55; color: var(--text-secondary); }
+  .cd-cell-note { font-size: 10px; line-height: 1.5; color: var(--text-tertiary); margin-top: 6px; font-style: italic; }
+  .cd-cell-source { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); margin-top: 6px; }
+  .cd-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 4px 0; }
+  .cd-legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+
   /* ---- Overview view ---- */
   .overview-section { margin-bottom: 32px; }
   .overview-section-title {
@@ -333,6 +372,7 @@
     <button class="active" data-view="overview">Overview</button>
     <button data-view="institution">By Institution</button>
     <button data-view="topic">By Topic</button>
+    <button data-view="codecision">Co-Decision Tracker</button>
   </div>
 
   <select id="topicSelect" class="hidden"></select>
@@ -352,6 +392,7 @@
 <div id="overviewView"></div>
 <div id="institutionView" class="hidden"></div>
 <div id="topicView" class="hidden"></div>
+<div id="codecisionView" class="hidden"></div>
 
 <footer id="footer"></footer>
 
@@ -962,9 +1003,13 @@ function renderExecHeatmap(dossier) {
     speculation: 'No new EUA trading restrictions',
     frontload: 'Oppose auction frontloading (Booster)',
     mwi: 'Integrate waste incineration',
-    freealloc: 'Slower free-allocation phase-out',
+    mwthreshold: 'Retain 20 MWth threshold',
+    freealloc: 'Free-alloc rework (pace/tiering/conditionality)',
+    cbamexport: 'Close CBAM export loopholes',
     indirect: 'Extend & harmonize indirect cost comp.',
     modfund: 'Maintain Modernisation Fund',
+    idb: 'IDB: prioritise competitive projects',
+    revenue: 'Earmark revenues for decarbonisation',
     ets2delay: 'No further ETS2 delay',
   };
   const rowsHTML = topics.map(t => {
@@ -1244,10 +1289,122 @@ function setActiveView(view) {
   document.getElementById('overviewView').classList.toggle('hidden', view !== 'overview');
   document.getElementById('institutionView').classList.toggle('hidden', view !== 'institution');
   document.getElementById('topicView').classList.toggle('hidden', view !== 'topic');
+  document.getElementById('codecisionView').classList.toggle('hidden', view !== 'codecision');
   topicSelect.classList.toggle('hidden', view !== 'topic');
   if (view === 'overview') renderOverviewView();
   if (view === 'institution') renderInstitutionView();
   if (view === 'topic') renderTopicView(topicSelect.value);
+  if (view === 'codecision') renderCoDecisionView();
+}
+
+function cdGradeClass(grade) {
+  const g = (grade || '').replace(/\//g, '');
+  if (g === '++' || g === '+') return 'support';
+  if (g === '--' || g === '-') return 'oppose';
+  return 'neutral';
+}
+
+function cdCommissionCellHTML(col) {
+  if (!col) return `<div class="cd-cell-inner cd-pending"><div class="cd-status-row"><span class="cd-badge cd-pending">No data</span></div><div class="cd-cell-text">Not yet tracked.</div></div>`;
+  const cls = col.alignment || 'neutral';
+  const sourceHTML = col.source ? `<div class="cd-cell-source">${col.source}${col.date ? ' · ' + col.date : ''}</div>` : '';
+  return `<div class="cd-cell-inner cd-${cls}">
+    <div class="cd-status-row"><span class="cd-badge cd-${cls}">Confirmed</span></div>
+    <div class="cd-cell-text">${col.text || ''}</div>
+    ${sourceHTML}
+  </div>`;
+}
+
+function cdVoiceHTML(v, extraClass) {
+  if (!v) return '';
+  const roleHTML = v.role ? ` <span class="cd-voice-role">(${v.role})</span>` : '';
+  const sourceHTML = v.source ? `<div class="cd-cell-source">${v.source}${v.date ? ' · ' + v.date : ''}</div>` : '';
+  return `<div class="${extraClass || ''}">
+    <div class="cd-voice-name">${v.name}${roleHTML}</div>
+    <div class="cd-cell-text">${v.text || ''}</div>
+    ${sourceHTML}
+  </div>`;
+}
+
+function cdPositionCellHTML(col, topicId, columnKey) {
+  if (!col) return `<div class="cd-cell-inner cd-pending"><div class="cd-status-row"><span class="cd-badge cd-pending">No data</span></div><div class="cd-cell-text">Not yet tracked.</div></div>`;
+  const hasPrimary = !!col.primary;
+  const cls = col.status === 'pending' ? 'pending' : col.status === 'interim' ? 'interim' : (col.alignment || 'neutral');
+  const badgeLabel = col.status === 'pending' ? 'Pending' : col.status === 'interim' ? 'Interim / unofficial' : 'Confirmed';
+  const mainHTML = hasPrimary
+    ? cdVoiceHTML(col.primary)
+    : `<div class="cd-cell-text">${col.note || 'No position yet.'}</div>`;
+
+  const additional = col.additional || [];
+  const expandKey = `cd-${columnKey}-${topicId}`;
+  const isExpanded = !!expandState[expandKey];
+  const expandToggleHTML = additional.length > 0
+    ? `<div class="cd-expand-toggle" onclick="toggleExpand('${expandKey}'); renderCoDecisionView();">${isExpanded ? '▾ Hide' : '▸ Show'} ${additional.length} other voice${additional.length > 1 ? 's' : ''}</div>`
+    : '';
+  const additionalHTML = isExpanded
+    ? additional.map(a => cdVoiceHTML(a, 'cd-voice-additional')).join('')
+    : '';
+
+  return `<div class="cd-cell-inner cd-${cls}">
+    <div class="cd-status-row"><span class="cd-badge cd-${cls}">${badgeLabel}</span></div>
+    ${mainHTML}
+    ${expandToggleHTML}
+    ${additionalHTML}
+  </div>`;
+}
+
+function renderCoDecisionView() {
+  const d = getDossier();
+  const container = document.getElementById('codecisionView');
+  if (!d || !d.topics || !d.topics.some(t => t.coDecision)) {
+    container.innerHTML = `<div class="cd-intro">No co-decision data available for this dossier yet.</div>`;
+    return;
+  }
+  // Derive Commission's cell alignment colour from the Commission institution's own tracked stance, so the
+  // two views (stakeholder tracker vs. co-decision tracker) never silently disagree with each other.
+  const commInst = (d.institutions || []).find(i => i.id === 'comm');
+  const commEntity = commInst ? (commInst.entities || []).find(e => e.id === 'cabinet-hoekstra') : null;
+
+  const rows = d.topics.map(t => {
+    const cd = t.coDecision;
+    if (!cd) return '';
+    const commCol = cd.commission ? Object.assign({}, cd.commission, {
+      alignment: commEntity && commEntity.stances && commEntity.stances[t.id] ? commEntity.stances[t.id].stance : 'neutral'
+    }) : null;
+    const gradeCls = cdGradeClass(t.eonGrade);
+    return `<tr class="cd-row">
+      <td class="cd-topic-cell">
+        <span class="cd-topic-code">${t.code}</span>
+        <span class="cd-topic-label">${t.label}</span>
+        <span class="cd-badge cd-${gradeCls} cd-eon-grade-badge" title="E.ON's own assessment of how well the Commission proposal serves this ask">E.ON: ${t.eonGrade}</span>
+      </td>
+      <td class="cd-cell">${cdCommissionCellHTML(commCol)}</td>
+      <td class="cd-cell">${cdPositionCellHTML(cd.parliament, t.id, 'parliament')}</td>
+      <td class="cd-cell">${cdPositionCellHTML(cd.council, t.id, 'council')}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="cd-intro">Comparison in the format the co-legislators themselves use in trilogue: the Commission's filed proposal text as the fixed anchor, and Parliament's and Council's negotiating positions as they emerge over the coming months. The topic itself is framed around E.ON's own ask (position paper), with E.ON's own ++/–– self-assessment grade of how the Commission proposal serves it shown as a badge — so no separate E.ON column is needed. Parliament/Council cells show the single most relevant position by default (currently the rapporteur, EPP, for Parliament; a milestone note for Council, which has no position yet) — click “Show N other voices” to expand other tracked MEPs/Member States on that specific topic. Once ENVI/Parliament or Council adopt an official position, that becomes the default entry here, superseding the interim signal. This table tracks the official, collective position of each institution as a body — it is separate from, and does not replace, the stakeholder-by-stakeholder alignment tracking in the other three tabs.</div>
+    <div class="cd-table-wrap">
+      <table class="cd-table">
+        <thead><tr>
+          <th class="cd-col-topic">Topic (E.ON position)</th>
+          <th class="cd-col-data">Commission proposal</th>
+          <th class="cd-col-data">Parliament / ENVI position</th>
+          <th class="cd-col-data">Council position</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="cd-legend">
+      <div class="cd-legend-item"><span class="cd-badge cd-support">Aligned w/ E.ON</span></div>
+      <div class="cd-legend-item"><span class="cd-badge cd-oppose">Opposed to E.ON</span></div>
+      <div class="cd-legend-item"><span class="cd-badge cd-neutral">Mixed</span></div>
+      <div class="cd-legend-item"><span class="cd-badge cd-interim">Interim / unofficial signal</span></div>
+      <div class="cd-legend-item"><span class="cd-badge cd-pending">No official position yet</span></div>
+    </div>
+  `;
 }
 
 document.querySelectorAll('.view-toggle button').forEach(btn => btn.addEventListener('click', () => setActiveView(btn.dataset.view)));
@@ -1281,78 +1438,593 @@ DOSSIERS = {
     "lastUpdated": "2026-07-21",
     "topics": [
       {
-        "id": "ets1general",
-        "code": "ETS1",
-        "label": "Generally preserve ETS1 as a central, market-based and cost-efficient decarbonisation instrument (vs. fundamentally weakening, delaying, or suspending it)",
-        "eonPosition": "Preserve ETS1 as the EU's central, market-based, cost-efficient decarbonisation instrument — reform it, don't dismantle it."
+            "id": "ets1general",
+            "code": "ETS1",
+            "label": "Generally preserve ETS1 as a central, market-based and cost-efficient decarbonisation instrument (vs. fundamentally weakening, delaying, or suspending it)",
+            "eonPosition": "Preserve ETS1 as the EU's central, market-based, cost-efficient decarbonisation instrument — reform it, don't dismantle it.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "COM(2026) 616 final reforms and maintains ETS1 as the central instrument for Phase 5 (2031-2040) rather than replacing or suspending it.",
+                        "source": "COM(2026) 616 final",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "interim",
+                        "primary": {
+                              "name": "Peter Liese",
+                              "role": "EPP, Rapporteur",
+                              "text": "“Today is a good day for the climate, for competitiveness and, above all, for jobs.” No amendments signalled yet.",
+                              "source": "Liese official press release",
+                              "date": "2026-07-17"
+                        },
+                        "note": null,
+                        "additional": [
+                              {
+                                    "name": "Pierfrancesco Maran",
+                                    "role": "S&D, ENVI Chair",
+                                    "text": "Official statement: ETS “remains key pillar of EU climate and industrial policy,” citing €250bn+ raised since 2013.",
+                                    "source": "ENVI highlights page, press release",
+                                    "date": "2026-07-17"
+                              },
+                              {
+                                    "name": "Michael Bloss",
+                                    "role": "Greens/EFA",
+                                    "text": "Accused the Commission of handing industry “a licence to pollute for even longer and at a lower cost” — critical but does not oppose ETS1 as an instrument.",
+                                    "source": "IBTimes UK",
+                                    "date": "2026-07-19"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": [
+                              {
+                                    "name": "Germany (BMUKN, Schneider)",
+                                    "text": "Full primary backing: “the ETS remains the heart of European climate policy and the most important market-based driver of investment.”",
+                                    "source": "BMUKN Pressemitteilung Nr. 095/26",
+                                    "date": "2026-07-18"
+                              },
+                              {
+                                    "name": "10-country bloc (Italy-led)",
+                                    "text": "Welcomed the direction but wants more. Poland's climate minister Hennig-Kloska: “a huge success... although we will fight for more.”",
+                                    "source": "IBTimes UK",
+                                    "date": "2026-07-19"
+                              },
+                              {
+                                    "name": "7-country coalition (NL, DK, ES, FI, PT, LU, SE)",
+                                    "text": "Ambition-preserving coalition warns against watering down the system.",
+                                    "source": "E&E News/POLITICO",
+                                    "date": "2026-07-08"
+                              }
+                        ]
+                  }
+            }
       },
       {
-        "id": "lrf",
-        "code": "LRF",
-        "label": "Lower LRF (aligned to 2050 neutrality)",
-        "eonPosition": "Lower the Linear Reduction Factor, aligned with the EU's 2050 climate-neutrality trajectory rather than the current 4.4%/year pace."
+            "id": "lrf",
+            "code": "LRF",
+            "label": "Lower LRF (aligned to 2050 neutrality)",
+            "eonPosition": "Lower the Linear Reduction Factor, aligned with the EU's 2050 climate-neutrality trajectory rather than the current 4.4%/year pace.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 9: LRF cut to 3.7%/yr (2031-2035) and 1.7%/yr from 2036 (from 4.4% today); Art. 9b reverts the post-2036 rate to 2.7% if up to 260m Art. 6 international credits prove unavailable.",
+                        "source": "COM(2026) 616 final, Art. 9 & 9b",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "interim",
+                        "primary": {
+                              "name": "Peter Liese",
+                              "role": "EPP, Rapporteur",
+                              "text": "Welcomed the 3.7%/1.7% figures as “fully compatible with the EU's 2040 climate target and the goal of climate neutrality by 2050.” No alternative rate proposed yet.",
+                              "source": "Liese official press release",
+                              "date": "2026-07-17"
+                        },
+                        "note": null,
+                        "additional": [
+                              {
+                                    "name": "EPP Group (pre-proposal paper)",
+                                    "role": "leaked internal position, POLITICO",
+                                    "text": "Earlier sought an LRF cap of ≤3.4%/yr — softer than the Commission's 3.7%; not reasserted since publication.",
+                                    "source": "POLITICO (leak)",
+                                    "date": "2026-06-18"
+                              },
+                              {
+                                    "name": "Wölken, Chahim, López (S&D) + Bloss, Reintke (Greens/EFA)",
+                                    "role": "joint letter",
+                                    "text": "Wanted LRF held near 4.4%/yr until 2035, easing only slightly from 2036 — directly opposed to E.ON's and the Commission's direction.",
+                                    "source": "S&D/Greens letter to von der Leyen/Ribera/Séjourné/Hoekstra",
+                                    "date": "2026-07-03"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": [
+                              {
+                                    "name": "Germany (BMWE, Reiche)",
+                                    "text": "Wants an even slower LRF pace than currently planned, a limited allowance quantity retained past 2039, and new supplementary funding for “first-mover” companies.",
+                                    "source": "Rheinische Post (via BMWE response to Bundestag Kleine Anfrage)",
+                                    "date": "2026-06-04"
+                              }
+                        ]
+                  }
+            }
       },
       {
-        "id": "msr",
-        "code": "MSR",
-        "label": "MSR reform: earlier/gradual releases, no discretion",
-        "eonPosition": "Reform the MSR toward earlier, gradual allowance releases — explicitly opposing discretionary crisis-time intervention."
+            "id": "msr",
+            "code": "MSR",
+            "label": "MSR reform: earlier/gradual releases, no discretion",
+            "eonPosition": "Reform the MSR toward earlier, gradual allowance releases — explicitly opposing discretionary crisis-time intervention.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "MSR Decision amendments: intake rate halved 24%→12% (2028+); new 300m “lower buffer” from 2028; thresholds/buffer/release quantity shrink 4%/yr from 2029; automatic invalidation of reserve holdings above 400m ended (originally COM(2026) 153 final / 2026/0085(COD), now folded into the comprehensive text).",
+                        "source": "COM(2026) 616 final, AMs to MSR Decision",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "Pierfrancesco Maran (S&D) is rapporteur for the standalone 2026/0085(COD) invalidation file (appointed 29 May 2026); no position yet on the broader MSR parameters folded into COM(2026) 616.",
+                        "additional": [
+                              {
+                                    "name": "Wiesner, Canfin, Gerbrandy (Renew)",
+                                    "role": "joint letter",
+                                    "text": "Opposes ad hoc MSR interventions — “short-term fixes to freeze the price signal or trigger urgent releases... from the MSR” — aligned with E.ON's no-discretion ask.",
+                                    "source": "Renew letter to von der Leyen/Ribera/Séjourné/Hoekstra",
+                                    "date": "2026-07-03"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": [
+                              {
+                                    "name": "Germany (government-wide non-paper)",
+                                    "text": "Opposes any “short-term” MSR intervention that would distort price signals, while supporting several targeted adjustments.",
+                                    "source": "Agence Europe",
+                                    "date": "2026-07-13"
+                              }
+                        ]
+                  }
+            }
       },
       {
-        "id": "beccs",
-        "code": "BECCS",
-        "label": "BECCS / permanent carbon removals integration from 2031",
-        "eonPosition": "Integrate BECCS and other permanent carbon removals into the ETS1 framework from 2031."
+            "id": "beccs",
+            "code": "BECCS",
+            "label": "BECCS / permanent carbon removals integration from 2031",
+            "eonPosition": "Integrate BECCS and other permanent carbon removals into the ETS1 framework from 2031.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 9c: 250m allowances earmarked 2031-2040, auctioned by the Commission to purchase an equivalent volume of domestic permanent removal units (BioCCS/BECCS, DACCS), prioritising cost-effective, high-integrity projects, payment on delivery.",
+                        "source": "COM(2026) 616 final, Art. 9c",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": [
+                              {
+                                    "name": "Bloss, Reintke (Greens/EFA)",
+                                    "role": "joint letter",
+                                    "text": "Skeptical of permanent-removals integration generally (immaturity, sustainability risk); want purchases limited to DACCS with strong safeguards and oppose using removals to increase the ETS cap ex ante.",
+                                    "source": "Greens/EFA letter",
+                                    "date": "2026-07-03"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "art29a",
-        "code": "ART29A",
-        "label": "Strengthen Art. 29a price containment",
-        "eonPosition": "Strengthen Article 29a's price-containment mechanism to dampen excessive volatility."
+            "id": "art29a",
+            "code": "ART29A",
+            "label": "Strengthen Art. 29a price containment",
+            "eonPosition": "Strengthen Article 29a's price-containment mechanism to dampen excessive volatility.",
+            "eonGrade": "--",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "No amendments to Art. 29a (price containment mechanism) proposed anywhere in COM(2026) 616 final.",
+                        "source": "COM(2026) 616 final (absence confirmed by direct text search)",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "speculation",
-        "code": "SPECULATION",
-        "label": "No new trading restrictions on EUAs (E.ON opposes \"anti-speculation\" measures)",
-        "eonPosition": "Oppose any new trading restrictions on EU allowances — the market mechanism, not restricted trading, should set the price."
+            "id": "speculation",
+            "code": "SPECULATION",
+            "label": "No new trading restrictions on EUAs (E.ON opposes \"anti-speculation\" measures)",
+            "eonPosition": "Oppose any new trading restrictions on EU allowances — the market mechanism, not restricted trading, should set the price.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "No new EUA trading restrictions proposed anywhere in COM(2026) 616 final.",
+                        "source": "COM(2026) 616 final",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "frontload",
-        "code": "BOOSTER",
-        "label": "Oppose auction frontloading to finance Investment Booster",
-        "eonPosition": "Oppose frontloading future auction volumes to finance the Investment Booster \u2014 rely on existing reserves or EU-level financing instead."
+            "id": "frontload",
+            "code": "BOOSTER",
+            "label": "Oppose auction frontloading to finance Investment Booster",
+            "eonPosition": "Oppose frontloading future auction volumes to finance the Investment Booster — rely on existing reserves or EU-level financing instead.",
+            "eonGrade": "+",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10cc: the 400m-EUA Investment Booster (2028-2030) is funded from the existing Free Allocation Buffer / New Entrants Reserve, not from frontloaded future auction volumes.",
+                        "source": "COM(2026) 616 final, Art. 10cc",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "mwi",
-        "code": "MWI",
-        "label": "Keep 20 MWth threshold; full ETS1 integration of MWI",
-        "eonPosition": "Keep the 20 MWth installation threshold and fully integrate municipal waste incineration into ETS1."
+            "id": "mwi",
+            "code": "MWI",
+            "label": "Full ETS1 integration of municipal waste incineration",
+            "eonPosition": "Fully integrate municipal waste incineration into ETS1, complemented by safeguards against landfill diversion and increased third-country waste exports.",
+            "eonGrade": "+",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 12a phases MWI into ETS1 2031-2034 (25/50/75/100% of verified emissions by year), with national opt-outs to end-2035 for outermost regions and qualifying Member States.",
+                        "source": "COM(2026) 616 final, Art. 12a/12b",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": [
+                              {
+                                    "name": "Bloss, Reintke (Greens/EFA)",
+                                    "role": "joint letter",
+                                    "text": "Support extending ETS to municipal waste incinerators (gradual, with financial support for local authorities) — directionally aligned with E.ON.",
+                                    "source": "Greens/EFA letter",
+                                    "date": "2026-07-03"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "freealloc",
-        "code": "FREEALLOC",
-        "label": "Slower free-allocation phase-out (+ tiered/differentiated approach by sector carbon leakage risk)",
-        "eonPosition": "Slow the free-allocation phase-out with a tiered approach differentiated by each sector's carbon-leakage risk."
+            "id": "mwthreshold",
+            "code": "20MWTH",
+            "label": "Retain the 20 MWth installation threshold",
+            "eonPosition": "Retain the current 20 MWth threshold for ETS1 installations to preserve administrative simplicity — smaller emitters are covered upstream under ETS2 from 2028 onwards.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "No lowering of the 20 MWth threshold proposed — the Impact Assessment explicitly rejected it as disproportionate, since affected emissions will be covered upstream by ETS2 from 2028.",
+                        "source": "COM(2026) 616 final + Impact Assessment",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "indirect",
-        "code": "INDIRECT",
-        "label": "Extend and harmonize indirect cost compensation",
-        "eonPosition": "Extend indirect cost compensation beyond 2030 and harmonize it at EU level (mandated in the ETS Directive), rather than leaving it to individual Member States."
+            "id": "freealloc",
+            "code": "FREEALLOC",
+            "label": "Free allocation rework: phase-out pace, leakage-risk tiering, and investment conditionality",
+            "eonPosition": "Slow the free-allocation phase-out with a tiered approach differentiated by each sector's carbon-leakage risk; any investment-linked conditionality attached to free allocation should be proportionate and not penalise sectors with structurally longer decarbonisation timelines.",
+            "eonGrade": "+/-",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10a: free-allocation/CBAM-sector phase-out stretched to 2038; from 2031 all free allocation conditional on an ‘Invest in EU decarbonisation plan’ (80% upfront, 20% on demonstrated investment), lowest 10% of emitters exempt, reimbursement obligation on relocation — a blanket conditionality mechanism, not a sector-leakage-risk-tiered one.",
+                        "source": "COM(2026) 616 final, Art. 10a",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "interim",
+                        "primary": {
+                              "name": "Peter Liese",
+                              "role": "EPP, Rapporteur",
+                              "text": "Frontrunners — companies that have already invested — must not be penalised; supports the conditionality approach in principle, wants industry given time but not to “sit back and do nothing.” No formal amendments tabled yet.",
+                              "source": "Liese official press release",
+                              "date": "2026-07-17"
+                        },
+                        "note": null,
+                        "additional": [
+                              {
+                                    "name": "Tiemo Wölken",
+                                    "role": "S&D",
+                                    "text": "Reform must combine climate protection with industrial strength; flexibility/aid must be tied to binding investment and job-preservation commitments — conditional-not-blanket framing.",
+                                    "source": "dpa-AFX",
+                                    "date": "2026-07-17"
+                              },
+                              {
+                                    "name": "Chahim, Grudler, Paulus, Niebler",
+                                    "role": "cross-group",
+                                    "text": "Explicitly oppose extending free allocation to non-investing/laggard companies — the Glueck-lesson pattern.",
+                                    "source": "EP topical debate transcript",
+                                    "date": "2026-06 (undated exact)"
+                              },
+                              {
+                                    "name": "Wiesner, Canfin, Gerbrandy (Renew)",
+                                    "role": "joint letter",
+                                    "text": "Want a more targeted allocation approach reflecting actual carbon-leakage exposure — closest of the three group letters to E.ON's own tiered ask.",
+                                    "source": "Renew letter",
+                                    "date": "2026-07-03"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": [
+                              {
+                                    "name": "Italy, Czechia",
+                                    "text": "Signalled they will oppose the investment-linked free-allocation conditionality specifically, even while welcoming the broader package direction.",
+                                    "source": "IBTimes UK",
+                                    "date": "2026-07-19"
+                              },
+                              {
+                                    "name": "Germany (BMUKN, Schneider)",
+                                    "text": "Welcomes the fallback-benchmark flexibilities for energy-intensive industries — chemicals, steel, base materials — as addressing their “double challenge” of decarbonising while staying competitive.",
+                                    "source": "BMUKN Pressemitteilung Nr. 095/26",
+                                    "date": "2026-07-18"
+                              }
+                        ]
+                  }
+            }
       },
       {
-        "id": "modfund",
-        "code": "MODFUND",
-        "label": "Maintain Modernisation Fund for grid oversizing",
-        "eonPosition": "Maintain the Modernisation Fund to support grid oversizing and anticipatory investment."
+            "id": "cbamexport",
+            "code": "CBAMEXPORT",
+            "label": "Close CBAM export-protection loopholes",
+            "eonPosition": "Improve CBAM by closing remaining loopholes and ensuring adequate protection for EU exporters, alongside a slower free-allocation phase-out for CBAM sectors.",
+            "eonGrade": "-",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "No “permanent CBAM export solution” included anywhere in COM(2026) 616 final.",
+                        "source": "COM(2026) 616 final (absence confirmed via E.ON's own assessment table)",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       },
       {
-        "id": "ets2delay",
-        "code": "ETS2",
-        "label": "No further ETS2 delay (keep ETS1/ETS2 backbone)",
-        "eonPosition": "Keep ETS1 and ETS2 as the system's backbone — no further delay to ETS2's scheduled start."
+            "id": "indirect",
+            "code": "INDIRECT",
+            "label": "Extend and harmonize indirect cost compensation",
+            "eonPosition": "Extend indirect cost compensation beyond 2030 and harmonize it at EU level (mandated in the ETS Directive), rather than leaving it to individual Member States.",
+            "eonGrade": "+-",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10a extends indirect cost compensation beyond 2030, but keeps it a national State-aid measure (subject to State aid rules) rather than an EU-harmonised mandate.",
+                        "source": "COM(2026) 616 final, Art. 10a",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
+      },
+      {
+            "id": "modfund",
+            "code": "MODFUND",
+            "label": "Maintain Modernisation Fund for grid oversizing",
+            "eonPosition": "Maintain the Modernisation Fund to support grid oversizing and anticipatory investment.",
+            "eonGrade": "+",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10d: Modernisation Fund continued 2031-2040, cap-share nominally cut from a 4.5% peak to 2%, plus a new 0.5% IDB-linked funding stream for the same beneficiary Member States — net firepower roughly maintained.",
+                        "source": "COM(2026) 616 final, Art. 10d",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
+      },
+      {
+            "id": "idb",
+            "code": "IDB",
+            "label": "Industrial Decarbonisation Bank: prioritise competitive electrification projects",
+            "eonPosition": "Use the Industrial Decarbonisation Bank to organise EU-wide auctions favouring the most competitive domestic projects — particularly low- and medium-temperature-heat electrification — including dedicated funding for one-off grid connection costs.",
+            "eonGrade": "+",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10cc establishes the Industrial Decarbonisation Bank from 2028 (€100bn envelope per the Impact Assessment); granular prioritisation criteria (cost-effectiveness, electrification focus, grid-connection funding) not yet detailed at Article level.",
+                        "source": "COM(2026) 616 final, Art. 10cc + Impact Assessment",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": [
+                              {
+                                    "name": "Germany (BMUKN, Schneider)",
+                                    "text": "Calls the Investment Booster / IDB approach “a step in the right direction,” signalling to companies to invest now in future-proof decarbonisation projects.",
+                                    "source": "BMUKN Pressemitteilung Nr. 095/26",
+                                    "date": "2026-07-18"
+                              }
+                        ]
+                  }
+            }
+      },
+      {
+            "id": "revenue",
+            "code": "REVENUE",
+            "label": "Effective earmarking of ETS1 revenues for decarbonisation",
+            "eonPosition": "Ensure national ETS1 revenues are effectively allocated to decarbonisation, prioritising sectors bearing the scheme's direct and indirect costs.",
+            "eonGrade": "+-",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "Art. 10/10a mandate at least 50% of national ETS1 revenues (after ICC deductions) to decarbonisation purposes — but a new EU-budget ‘Own Resources’ carve-out of 30% of auction revenue shrinks the base, cutting the effective national earmarking rate for energy/climate purposes from 100% today to an estimated 35% (E.ON's own calculation).",
+                        "source": "COM(2026) 616 final, Art. 10/10a",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No rapporteur or committee comment found yet.",
+                        "additional": [
+                              {
+                                    "name": "Pierfrancesco Maran",
+                                    "role": "S&D, ENVI Chair",
+                                    "text": "Cited €250bn+ raised since 2013 (~€40bn in 2024 alone) as a key industrial-policy lever — framing revenue scale as a success, not yet commenting on the earmarking-effectiveness question specifically.",
+                                    "source": "ENVI highlights page, press release",
+                                    "date": "2026-07-17"
+                              }
+                        ]
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
+      },
+      {
+            "id": "ets2delay",
+            "code": "ETS2",
+            "label": "No further ETS2 delay (keep ETS1/ETS2 backbone)",
+            "eonPosition": "Keep ETS1 and ETS2 as the system's backbone — no further delay to ETS2's scheduled start.",
+            "eonGrade": "++",
+            "coDecision": {
+                  "commission": {
+                        "status": "confirmed",
+                        "text": "ETS2 is explicitly excluded from the scope of this proposal — becomes fully operational in 2028, review due by 2029, feasibility of ETS1 integration assessed only by 2031. No delay proposed.",
+                        "source": "COM(2026) 616 final",
+                        "date": "2026-07-17"
+                  },
+                  "parliament": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "No formal ENVI/plenary position on this specific point yet; individual MEP-level ETS2 stances remain tracked in the By Institution/By Topic views.",
+                        "additional": []
+                  },
+                  "council": {
+                        "status": "pending",
+                        "primary": null,
+                        "note": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026.",
+                        "additional": []
+                  }
+            }
       }
-    ],
+],
     "institutions": [
       {
         "id": "ep",
@@ -8451,18 +9123,32 @@ DOSSIERS = {
                 "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 (aligned with E.ON), but it remains a national State-aid measure rather than an EU-wide harmonised mandate \u2014 not aligned with E.ON's specific ask to mandate it EU-wide in the Directive itself."
               },
               "freealloc": {
-                "stance": "support",
+                "stance": "neutral",
                 "intensity": 2,
                 "confidence": 3,
-                "source": "document",
-                "note": "Commits to \"extending the free allocation regime\" — but EXPLICITLY CONDITIONAL: \"clearly linking it to much-needed investments inside Europe.\" TRADE-OFF: this is not unconditional generosity — expect investment-verification/conditionality requirements attached, which adds compliance burden E.ON should plan for."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026 to primary, stance revised to mixed given the now-broadened topic. Art. 10a: phase-out stretched to 2038 (aligned with E.ON on pace) via a blanket 80/20 investment-conditionality mechanism (\"Invest in EU decarbonisation plan\", 10% lowest-emitters exempt) \u2014 NOT the sector-leakage-risk-tiered approach E.ON specifically asked for. E.ON's own assessment table scores the tiering ask \"-\" for exactly this reason, even while scoring the phase-out extension \"++\"."
+              },
+              "cbamexport": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "No \"permanent CBAM export solution\" included in COM(2026) 616 final \u2014 E.ON's own assessment table scores this \"-\". The Commission has not delivered on this specific ask."
               },
               "mwi": {
                 "stance": "support",
-                "intensity": 2,
+                "intensity": 3,
                 "confidence": 3,
-                "source": "document",
-                "note": "Mentions \"considering a gradual inclusion of waste incinerators in the ETS\" — directionally aligned with E.ON, but framed as still under consideration, not committed."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026 to primary — Art. 12a of COM(2026) 616 final phases MWI into ETS1 2031-2034 (25/50/75/100% of verified emissions by year), with national opt-outs to end-2035 for outermost regions and Member States meeting 2/3 of a set of conditions. A firm commitment now, not just \"under consideration.\""
+              },
+              "mwthreshold": {
+                "stance": "support",
+                "intensity": 3,
+                "confidence": 3,
+                "source": "research",
+                "note": "The Impact Assessment explicitly rejected lowering the 20 MWth threshold as \"not proportionate,\" since most affected emissions will be covered upstream by ETS2 from 2028. No change proposed \u2014 fully aligned with E.ON's ask."
               },
               "modfund": {
                 "stance": "support",
@@ -8470,6 +9156,20 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "document",
                 "note": "Confirms Modernisation Fund continuity to \"assist lower-income Member States in modernising their energy system.\" Aligned with E.ON."
+              },
+              "idb": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Added 21 Jul 2026 \u2014 Art. 10cc establishes the Industrial Decarbonisation Bank from 2028 (\u20ac100bn envelope per the Impact Assessment), broadly matching E.ON's ask for an EU-wide competitive-auction vehicle. Granular prioritisation criteria (cost-effectiveness, electrification focus, grid-connection funding) not yet detailed at Article level \u2014 E.ON's own table scores this \"+\", not \"++\"."
+              },
+              "revenue": {
+                "stance": "neutral",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Added 21 Jul 2026 \u2014 Art. 10/10a mandate at least 50% of national ETS1 revenues (after indirect-cost-compensation deductions) to decarbonisation purposes. But a new EU-budget \"Own Resources\" carve-out of 30% of auction revenue shrinks the base the 50% earmarking applies to \u2014 E.ON's own table estimates this cuts the effective national earmarking rate for energy/climate purposes from 100% today to roughly 35%. Mixed outcome, scored \"+-\" by E.ON."
               },
               "beccs": {
                 "stance": "support",
@@ -8563,18 +9263,32 @@ DOSSIERS = {
                 "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 but leaves it a national State-aid measure rather than an EU-wide harmonised mandate. See Cabinet Hoekstra entry."
               },
               "freealloc": {
-                "stance": "support",
+                "stance": "neutral",
                 "intensity": 2,
                 "confidence": 3,
-                "source": "document",
-                "note": "SEC(2026)175: extension of free allocation regime, explicitly conditional on investment-linkage (see Cabinet Hoekstra note for trade-off detail)."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026, stance revised to mixed given the now-broadened topic. Art. 10a extends phase-out to 2038 (aligned with E.ON) via blanket 80/20 investment-conditionality, not the sector-tiered approach E.ON asked for. See Cabinet Hoekstra entry."
+              },
+              "cbamexport": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "No \"permanent CBAM export solution\" in COM(2026) 616 final. See Cabinet Hoekstra entry."
               },
               "mwi": {
                 "stance": "support",
-                "intensity": 2,
+                "intensity": 3,
                 "confidence": 3,
-                "source": "document",
-                "note": "SEC(2026)175: \"considering\" gradual waste-incinerator inclusion — not yet committed."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026 to primary — Art. 12a of COM(2026) 616 final phases MWI into ETS1 2031-2034, with national opt-outs to end-2035. A firm commitment now. See Cabinet Hoekstra entry."
+              },
+              "mwthreshold": {
+                "stance": "support",
+                "intensity": 3,
+                "confidence": 3,
+                "source": "research",
+                "note": "The Impact Assessment explicitly rejected lowering the 20 MWth threshold as disproportionate. No change proposed \u2014 aligned with E.ON. See Cabinet Hoekstra entry."
               },
               "modfund": {
                 "stance": "support",
@@ -8582,6 +9296,20 @@ DOSSIERS = {
                 "confidence": 3,
                 "source": "document",
                 "note": "SEC(2026)175: Modernisation Fund continuity confirmed."
+              },
+              "idb": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Added 21 Jul 2026 \u2014 Art. 10cc establishes the IDB from 2028 (\u20ac100bn envelope), broadly matching E.ON's ask. See Cabinet Hoekstra entry."
+              },
+              "revenue": {
+                "stance": "neutral",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Added 21 Jul 2026 \u2014 50% national earmarking mandate, but a new EU \"Own Resources\" carve-out shrinks its effective base. See Cabinet Hoekstra entry."
               },
               "beccs": {
                 "stance": "support",
