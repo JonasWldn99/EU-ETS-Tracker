@@ -11,6 +11,7 @@
     --border: #383F4C; --text-primary: #E8E6E1; --text-secondary: #9AA0AC; --text-tertiary: #6B7280;
     --ep: #D4A24C; --comm: #5B84B1; --council: #4C9A8C;
     --support: #7FB069; --oppose: #C1554B; --neutral: #8B93A3; --unclear: #4A5160;
+    --tone-toofar: #E8998D; --tone-notenough: #7A2E27;
     --font-display: 'Source Serif 4', Georgia, serif;
     --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
     --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
@@ -241,7 +242,26 @@
   .reaction-feed-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 16px; }
   @media (max-width: 1100px) { .reaction-feed-cols { grid-template-columns: 1fr; } }
   .reaction-feed-col-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  .reaction-card2 { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .reaction-card2 { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .reaction-card2.reaction-tone-support { border-left-color: var(--support); background: rgba(127,176,105,0.06); }
+  .reaction-card2.reaction-tone-oppose { border-left-color: var(--oppose); background: rgba(193,85,75,0.06); }
+  .reaction-card2.reaction-tone-neutral { border-left-color: var(--neutral); background: rgba(139,147,163,0.06); }
+  .reaction-tone-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 10px 4px 16px; }
+  .reaction-tone-legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+  .reaction-tone-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .reaction-snapshot { display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 24px; align-items: start; margin: 14px 4px 20px; padding: 16px 18px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; }
+  @media (max-width: 900px) { .reaction-snapshot { grid-template-columns: 1fr; } }
+  .reaction-snapshot-chart { display: flex; align-items: center; gap: 18px; }
+  .reaction-pie { width: 92px; height: 92px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px var(--border); }
+  .reaction-pie-legend { display: flex; flex-direction: column; gap: 7px; }
+  .pie-legend-item { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--text-secondary); line-height: 1.4; }
+  .pie-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .reaction-snapshot-criticisms { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 650px) { .reaction-snapshot-criticisms { grid-template-columns: 1fr; } }
+  .criticism-col-title { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .criticism-list { margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.55; color: var(--text-secondary); }
+  .criticism-list li { margin-bottom: 6px; }
+  .reaction-card2-critique { font-family: var(--font-mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin-bottom: 5px; }
   .reaction-card2-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
   .reaction-actor2 { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
   .reaction-card2-role { font-weight: 400; color: var(--text-tertiary); font-size: 10px; }
@@ -1375,13 +1395,75 @@ function reactionCard2HTML(r) {
   const roleHTML = r.role ? ` <span class="reaction-card2-role">(${r.role})</span>` : '';
   const nameHTML = r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${r.actor}</a>` : r.actor;
   const topicsHTML = (r.topics || []).map(code => `<span class="reaction-topic-tag">${code}</span>`).join('');
-  return `<div class="reaction-card2">
+  const toneCls = r.stance === 'support' ? 'reaction-tone-support' : r.stance === 'oppose' ? 'reaction-tone-oppose' : 'reaction-tone-neutral';
+  const critiqueHTML = (r.stance === 'oppose' && r.critiqueType)
+    ? `<div class="reaction-card2-critique">${r.critiqueType === 'notFarEnough' ? 'Critical — not far enough on competitiveness' : 'Critical — weakens the ETS too much'}</div>`
+    : '';
+  return `<div class="reaction-card2 ${toneCls}">
     <div class="reaction-card2-head">
       <span class="reaction-actor2">${nameHTML}${roleHTML}</span>
     </div>
+    ${critiqueHTML}
     <div class="reaction-card2-text">${r.text}</div>
     <div class="reaction-card2-topics">${topicsHTML}</div>
     <div class="reaction-card2-source">${r.source}${r.date ? ' · ' + r.date : ''}</div>
+  </div>`;
+}
+
+function reactionSnapshotHTML(d) {
+  const r = d.reactions || {};
+  const all = [].concat(r.institutional || [], r.business || [], r.ngoThinkTank || []);
+  const buckets = { welcome: [], toofar: [], notenough: [], mixed: [] };
+  all.forEach(x => {
+    if (x.stance === 'support') buckets.welcome.push(x);
+    else if (x.stance === 'oppose' && x.critiqueType === 'notFarEnough') buckets.notenough.push(x);
+    else if (x.stance === 'oppose') buckets.toofar.push(x);
+    else buckets.mixed.push(x);
+  });
+  const total = all.length || 1;
+  const pct = n => Math.round((n / total) * 1000) / 10;
+  const segments = [
+    { color: 'var(--support)', count: buckets.welcome.length },
+    { color: 'var(--tone-toofar)', count: buckets.toofar.length },
+    { color: 'var(--tone-notenough)', count: buckets.notenough.length },
+    { color: 'var(--neutral)', count: buckets.mixed.length }
+  ];
+  let cursor = 0;
+  const parts = [];
+  segments.forEach(s => {
+    if (s.count <= 0) return;
+    const start = cursor;
+    cursor += (s.count / total) * 360;
+    parts.push(`${s.color} ${start}deg ${cursor}deg`);
+  });
+  const gradient = parts.length ? parts.join(', ') : 'var(--neutral) 0deg 360deg';
+
+  const legendHTML = `
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--support)"></span>Welcomes the proposal — ${buckets.welcome.length} of ${total} (${pct(buckets.welcome.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-toofar)"></span>Critical — weakens the ETS too much — ${buckets.toofar.length} of ${total} (${pct(buckets.toofar.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--tone-notenough)"></span>Critical — not far enough on competitiveness — ${buckets.notenough.length} of ${total} (${pct(buckets.notenough.length)}%)</div>
+    <div class="pie-legend-item"><span class="pie-swatch" style="background:var(--neutral)"></span>Mixed reaction — ${buckets.mixed.length} of ${total} (${pct(buckets.mixed.length)}%)</div>`;
+
+  const cs = r.criticismSummary || { tooFar: [], notFarEnough: [] };
+  const listHTML = arr => (arr && arr.length)
+    ? `<ol class="criticism-list">${arr.map(x => `<li>${x}</li>`).join('')}</ol>`
+    : `<div class="reaction-empty">Not enough tracked reactions yet to identify a pattern.</div>`;
+
+  return `<div class="reaction-snapshot">
+    <div class="reaction-snapshot-chart">
+      <div class="reaction-pie" style="background: conic-gradient(${gradient});"></div>
+      <div class="reaction-pie-legend">${legendHTML}</div>
+    </div>
+    <div class="reaction-snapshot-criticisms">
+      <div class="criticism-col">
+        <div class="criticism-col-title">Top criticisms — "goes too far" (weakens the ETS)</div>
+        ${listHTML(cs.tooFar)}
+      </div>
+      <div class="criticism-col">
+        <div class="criticism-col-title">Top criticisms — "doesn't go far enough" (competitiveness)</div>
+        ${listHTML(cs.notFarEnough)}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1413,7 +1495,13 @@ function renderReactionFeed(d) {
   const r = d.reactions || {};
   return `<div class="reaction-feed">
     <div class="reaction-feed-title">Stakeholder Reactions to the Commission Proposal</div>
-    <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per category by default; use "Show more" to see the rest. Deliberately styled without the Aligned/Opposed/Mixed colour scheme used elsewhere in this tool, to avoid reading informal commentary as an official alignment verdict.</div>
+    <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per category by default; use "Show more" to see the rest. Colour here reflects each stakeholder's own overall tone toward the Commission's proposal (welcoming / critical / mixed) — a different axis from the Aligned-with-E.ON / Opposed-to-E.ON colouring used in the official table below and in the other two tabs, so it can never be mistaken for an official alignment verdict.</div>
+    ${reactionSnapshotHTML(d)}
+    <div class="reaction-tone-legend">
+      <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--support)"></span>Generally welcomes the proposal</div>
+      <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--oppose)"></span>Generally criticises the proposal</div>
+      <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--neutral)"></span>Mixed / not clearly one or the other</div>
+    </div>
     <div class="reaction-feed-cols">
       ${reactionFeedColHTML(r.institutional, 'inst', 'Institutional (MEPs / Council · Member States)', 'institutional')}
       ${reactionFeedColHTML(r.business, 'biz', 'Business (Trade Associations)', 'business')}
@@ -1516,7 +1604,7 @@ DOSSIERS = {
       "actorType": "MEP",
       "role": "EPP, Rapporteur",
       "stance": "support",
-      "text": "Called the proposal “a good day for the climate, for competitiveness and, above all, for jobs.” Welcomed the 3.7%/1.7% LRF path as “fully compatible with the EU's 2040 climate target and the goal of climate neutrality by 2050” (the EPP had floated an even softer ≤3.4%/yr cap pre-proposal, not reasserted since). On free allocation, backs the conditionality approach in principle provided “frontrunners” who have already invested aren't penalised, and industry is given time but not allowed to “sit back and do nothing.” No formal amendments tabled yet.",
+      "text": "Called the proposal “a good day for the climate, for competitiveness and, above all, for jobs.” Welcomed the 3.7%/1.7% LRF path as “fully compatible with the EU's 2040 climate target and the goal of climate neutrality by 2050.” On free allocation, backs the conditionality approach in principle provided “frontrunners” who have already invested aren't penalised, and industry is given time but not allowed to “sit back and do nothing.” No formal amendments tabled yet.",
       "source": "Liese/EPP Group press release",
       "url": "https://www.eppgroup.eu/newsroom/ets-reform-can-protect-jobs-and-achieve-climate-goals",
       "date": "2026-07-17",
@@ -1528,124 +1616,64 @@ DOSSIERS = {
       "relevance": 1
     },
     {
-      "actor": "Pierfrancesco Maran",
-      "actorType": "MEP",
-      "role": "S&D, ENVI Chair",
-      "stance": "neutral",
-      "text": "Official statement: ETS “remains key pillar of EU climate and industrial policy,” citing over €250bn raised since 2013 (~€40bn in 2024 alone) — framing revenue scale as a success without yet commenting on the earmarking-effectiveness question specifically.",
-      "source": "ENVI highlights page, press release",
-      "url": null,
-      "date": "2026-07-17",
-      "topics": [
-        "ETS1",
-        "REVENUE"
-      ],
-      "relevance": null
-    },
-    {
-      "actor": "Greens/EFA (Bloss, Matthieu, Reintke)",
-      "actorType": "MEP",
-      "role": "Bloss: shadow rapporteur, ENVI",
-      "stance": "oppose",
-      "text": "Michael Bloss: the Commission gives industry “a licence to pollute for even longer and at a lower cost”; weakening the ETS “harms companies that create jobs and growth through climate-friendly production” and “holds back investment.” Sara Matthieu: free allowances are “nothing more than subsidies for the fossil fuel industry.” Separately, joint letters (pre-proposal, with S&D) sought the LRF held near 4.4%/yr until 2035, were skeptical of permanent-removals integration (wanting DACCS-only with safeguards), and supported extending ETS to municipal waste incineration.",
-      "source": "Greens/EFA press release",
-      "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
-      "date": "2026-07-17",
-      "topics": [
-        "ETS1",
-        "LRF",
-        "BECCS",
-        "MWI"
-      ],
-      "relevance": 3
-    },
-    {
-      "actor": "S&D (Wölken, Chahim, López)",
-      "actorType": "MEP",
-      "role": "S&D group MEPs",
-      "stance": "neutral",
-      "text": "Pre-proposal joint letter (with Greens/EFA) wanted the LRF held near 4.4%/yr until 2035. Post-proposal, Tiemo Wölken: reform must combine climate protection with industrial strength — flexibility and aid should be tied to binding investment and job-preservation commitments, a “conditional, not blanket” framing of free allocation.",
-      "source": "S&D/Greens letter to von der Leyen/Ribera/Séjourné/Hoekstra; dpa-AFX",
-      "url": null,
-      "date": "2026-07-17",
-      "topics": [
-        "LRF",
-        "FREEALLOC"
-      ],
-      "relevance": null
-    },
-    {
-      "actor": "Chahim, Grudler, Paulus, Niebler",
-      "actorType": "MEP",
-      "role": "cross-group",
-      "stance": "neutral",
-      "text": "Explicitly oppose extending free allocation to non-investing/laggard companies, without going as far as endorsing the Commission's specific conditionality design.",
-      "source": "EP topical debate transcript",
-      "url": null,
-      "date": "2026-06 (undated exact)",
-      "topics": [
-        "FREEALLOC"
-      ],
-      "relevance": null
-    },
-    {
-      "actor": "Renew (Wiesner, Canfin, Gerbrandy)",
-      "actorType": "MEP",
-      "role": "Renew group MEPs",
-      "stance": "support",
-      "text": "Joint letter opposes ad hoc MSR interventions — “short-term fixes to freeze the price signal or trigger urgent releases… from the MSR” — aligned with E.ON's no-discretion ask. On free allocation, want a more targeted approach reflecting actual carbon-leakage exposure — the closest of the tracked group letters to E.ON's own tiered ask.",
-      "source": "Renew letter to von der Leyen/Ribera/Séjourné/Hoekstra",
-      "url": null,
-      "date": "2026-07-03",
-      "topics": [
-        "MSR",
-        "FREEALLOC"
-      ],
-      "relevance": null
-    },
-    {
-      "actor": "Germany (BMUKN/Schneider, BMWE/Reiche)",
+      "actor": "Germany (BMUKN/Schneider)",
       "actorType": "Council/Member State",
-      "role": "Federal Government",
+      "role": "Federal Government — Environment Ministry",
       "stance": "support",
-      "text": "Environment Minister Carsten Schneider (BMUKN): “emissions trading has proven effective and remains the cornerstone of European climate policy and the most important market-based driver of investment”; welcomes the fallback-benchmark flexibilities for energy-intensive industries and calls the Investment Booster/IDB approach “a step in the right direction.” Economy Minister Katherina Reiche (BMWE) separately wants an even slower LRF pace than currently planned, an allowance quantity retained past 2039, and new supplementary funding for “first-mover” companies — a somewhat more industry-protective emphasis from the economics ministry than the environment ministry's general backing.",
-      "source": "BMUKN Pressemitteilung Nr. 095/26; Rheinische Post (BMWE response to Bundestag Kleine Anfrage)",
+      "text": "Environment Minister Carsten Schneider (BMUKN): “emissions trading has proven effective and remains the cornerstone of European climate policy and the most important market-based driver of investment”; welcomes the fallback-benchmark flexibilities for energy-intensive industries and calls the Investment Booster/IDB approach “a step in the right direction.”",
+      "source": "BMUKN Pressemitteilung Nr. 095/26",
       "url": "https://www.bundesumweltministerium.de/pressemitteilung/eu-kommission-legt-vorschlag-fuer-reform-des-europaeischen-emissionshandels-vor",
       "date": "2026-07-18",
       "topics": [
         "ETS1",
-        "LRF",
         "FREEALLOC",
         "IDB"
       ],
       "relevance": 2
     },
     {
-      "actor": "10-country bloc (Italy-led, incl. Poland, Czechia)",
-      "actorType": "Council/Member State",
-      "role": "Member State coalition",
-      "stance": "support",
-      "text": "Welcomed the direction but wants more. Poland's climate minister Hennig-Kloska: “For the first time, we are seeing a softening of the stance rather than a toughening of it — this is a huge success for Poland… although we will fight for more.” Italy and Czechia separately signalled they will oppose the investment-linked free-allocation conditionality specifically, even while welcoming the broader package direction.",
-      "source": "IBTimes UK",
-      "url": "https://www.ibtimes.co.uk/ten-eu-states-push-weaker-carbon-rules-seven-others-warn-against-watering-down-ets-1809402",
-      "date": "2026-07-19",
+      "actor": "Greens/EFA (Bloss, Matthieu, Reintke)",
+      "actorType": "MEP",
+      "role": "Bloss: shadow rapporteur, ENVI",
+      "stance": "oppose",
+      "critiqueType": "tooWeak",
+      "text": "Michael Bloss: the Commission gives industry “a licence to pollute for even longer and at a lower cost”; weakening the ETS “harms companies that create jobs and growth through climate-friendly production” and “holds back investment.” Sara Matthieu: free allowances are “nothing more than subsidies for the fossil fuel industry.”",
+      "source": "Greens/EFA press release",
+      "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
+      "date": "2026-07-17",
       "topics": [
         "ETS1",
+        "LRF",
+        "FREEALLOC"
+      ],
+      "relevance": 3
+    },
+    {
+      "actor": "Tiemo Wölken",
+      "actorType": "MEP",
+      "role": "S&D group MEP",
+      "stance": "neutral",
+      "text": "Reform must combine climate protection with industrial strength — flexibility and aid should be tied to binding investment and job-preservation commitments, a “conditional, not blanket” framing of free allocation.",
+      "source": "dpa report, republished via news.de",
+      "url": "https://www.news.de/wirtschaft/859829119/wie-geht-es-mit-dem-treibhausgashandelssystem-der-eu-weiter-klimaschutz-news-der-dpa-aktuell-zu-eu-klima-und-industrie/1/",
+      "date": "2026-07-17",
+      "topics": [
         "FREEALLOC"
       ],
       "relevance": 4
     },
     {
-      "actor": "7-country ambition coalition (NL, DK, ES, FI, PT, LU, SE)",
-      "actorType": "Council/Member State",
-      "role": "Member State coalition",
-      "stance": "support",
-      "text": "Ambition-preserving coalition warns against watering down the system — the opposite pole in Council from the Italy-led bloc.",
-      "source": "IBTimes UK / E&E News/POLITICO",
-      "url": "https://www.ibtimes.co.uk/ten-eu-states-push-weaker-carbon-rules-seven-others-warn-against-watering-down-ets-1809402",
-      "date": "2026-07-19",
+      "actor": "Pierfrancesco Maran",
+      "actorType": "MEP",
+      "role": "S&D, ENVI Chair",
+      "stance": "neutral",
+      "text": "Official statement: ETS “remains key pillar of EU climate and industrial policy,” citing over €250bn raised since 2013 (~€40bn in 2024 alone) — framing revenue scale as a success without yet commenting on the earmarking-effectiveness question specifically.",
+      "source": "Adnkronos (reporting Maran's official note)",
+      "url": "https://www.adnkronos.com/economia/maran-s-e-d-ets-pilastro-inamovibile-della-politica-climatica-ue_4HGYd80LMqYtcwfR1blgJ4",
+      "date": "2026-07-17",
       "topics": [
-        "ETS1"
+        "ETS1",
+        "REVENUE"
       ],
       "relevance": 5
     }
@@ -1668,24 +1696,38 @@ DOSSIERS = {
       "relevance": 1
     },
     {
-      "actor": "Eurochambres",
+      "actor": "Cefic",
       "actorType": "Trade Association",
-      "role": null,
-      "stance": "support",
-      "text": "President Vladimír Dlouhý, pre-proposal letter to von der Leyen: urges a “more gradual decarbonisation pathway,” extending free allocation (cautioning against new conditionalities), refining the MSR, and — directly matching E.ON's own ask — “an effective export solution for CBAM sectors to address the competitive disadvantage faced by EU exporters.” Welcomes the Industrial Decarbonisation Bank/Investment Booster and calls for “stronger and more credible earmarking of ETS revenues.”",
-      "source": "Eurochambres letter to President von der Leyen",
-      "url": "https://www.eurochambres.eu/wp-content/uploads/2026/06/Eurochambres-Letter-to-President-von-der-Leyen-on-the-revision-of-the-EU-ETS.pdf",
-      "date": "2026-06-23 (pre-proposal)",
+      "role": "European chemical industry",
+      "stance": "oppose",
+      "critiqueType": "notFarEnough",
+      "text": "President Markus Kamieth: “Europe's industry is losing ground at an alarming pace. Today's proposal is a missed opportunity to provide a realistic pathway for industrial transformation and restore confidence in Europe as a place to invest and produce... it deepens uncertainty and adds pressure at the very moment Europe needs decisive action.” Welcomes the flattened LRF trajectory and the international-credits opening, but says both are “fully offset” by removing existing carbon-leakage protection and adding new investment-linked conditionality and bureaucracy — “disconnected from the realities that industry is facing on the ground: no business case nor enabling conditions.”",
+      "source": "Cefic, \"Despite positive elements, the ETS revision proposal risks cutting industry, not emissions\"",
+      "url": "https://cefic.org/news/ets-review/",
+      "date": "2026-07-17",
       "topics": [
-        "LRF",
+        "ETS1",
         "FREEALLOC",
-        "MSR",
-        "IDB",
-        "REVENUE",
-        "BECCS",
-        "CBAMEXPORT"
+        "BECCS"
       ],
       "relevance": 2
+    },
+    {
+      "actor": "EUROFER",
+      "actorType": "Trade Association",
+      "role": "European steel industry",
+      "stance": "oppose",
+      "critiqueType": "notFarEnough",
+      "text": "Director General Axel Eggert: “It is a fantasy to believe [the steel industry] will reach 100% [decarbonisation] by 2033 without the right enabling conditions... the ETS risks losing a significant part of its steel industry instead of decarbonising it.” The free-allocation phase-out cut around 2029-2030 is “largely unchanged” despite the proposal's adjustments, the main steel benchmark still risks a sharp cut in 2031, and “the long-promised structural solution for CBAM exports is still missing” — while the new free-allocation conditionality “introduces additional administrative burden and legal uncertainty.”",
+      "source": "EUROFER press release, \"ETS review: 'It is a fantasy to believe Europe's steel industry can fully decarbonise by 2033...'\"",
+      "url": "https://www.eurofer.eu/press-room/press-releases/ets-review-it-is-a-fantasy-to-believe-europes-steel-industry-can-fully-decarbonise-by-2033-without-affordable-clean-electricity-and-hydrogen",
+      "date": "2026-07-17",
+      "topics": [
+        "ETS1",
+        "FREEALLOC",
+        "CBAMEXPORT"
+      ],
+      "relevance": 3
     }
   ],
   "ngoThinkTank": [
@@ -1694,6 +1736,7 @@ DOSSIERS = {
       "actorType": "NGO",
       "role": null,
       "stance": "oppose",
+      "critiqueType": "tooWeak",
       "text": "Duncan Woods, Senior Policy Officer for Industrial Decarbonisation: the reform “weakens key provisions, rewarding polluters.” Flags the LRF cut (4.4%→3.7%/1.7%) as a weaker emissions cap allowing “hundreds of millions of tonnes of additional emissions”; the MSR intake-rate cut (24%→12%) plus scrapped invalidation clause as a “risk of chronic oversupply”; and free-allocation conditionality as too weak, letting companies keep “a de facto subsidy” without meaningful investment.",
       "source": "EEB press release, \"Commission caves to industrial laggards, weakening EU carbon market\"",
       "url": "https://eeb.org/en/commission-caves-to-industrial-laggards-weakening-eu-carbon-market",
@@ -1704,23 +1747,6 @@ DOSSIERS = {
         "FREEALLOC"
       ],
       "relevance": 1
-    },
-    {
-      "actor": "WWF EU",
-      "actorType": "NGO",
-      "role": null,
-      "stance": "oppose",
-      "text": "Camille Maury, Senior Policy Officer on Industrial Decarbonisation (pre-proposal advisory): “Policymakers should listen not only to the industry lobbyists calling for a weaker ETS, but also to EU citizens who support a strong carbon price.” Called for the LRF to stay unchanged until 2036, the CBAM-sector free-allocation phase-out to complete by 2034 (faster than what was ultimately proposed), strategic/transparent use of ETS revenues, and warned against diluting the carbon price via international credits or removals.",
-      "source": "WWF EU media advisory, \"Revising Europe's carbon market\"",
-      "url": "https://www.wwf.eu/?21171691%2Fmedia-advisory-commission-proposal-ets-review-july-2026=",
-      "date": "2026-07-16 (pre-proposal)",
-      "topics": [
-        "LRF",
-        "FREEALLOC",
-        "REVENUE",
-        "BECCS"
-      ],
-      "relevance": 2
     },
     {
       "actor": "E3G",
@@ -1736,24 +1762,37 @@ DOSSIERS = {
         "REVENUE",
         "IDB"
       ],
-      "relevance": 3
+      "relevance": 2
     },
     {
       "actor": "Öko-Institut",
       "actorType": "Think Tank",
       "role": null,
       "stance": "oppose",
+      "critiqueType": "tooWeak",
       "text": "“Out of Balance” policy brief (Graichen, Gores, Cludius, Wissner, Matthes) warns of significant allowance oversupply 2031–2040 from the lower LRF combined with Investment Booster/CDR allowances and MSR carry-over; recommends the LRF stay at 4.4% until 2035 at least — directly opposed to E.ON's ask. Estimates free-allocation value rising ~24% (~€80bn) by 2050.",
-      "source": "Öko-Institut policy brief, \"Out of Balance\" (internal document, Source Documents folder)",
+      "source": "Öko-Institut policy brief, \"Out of Balance\" (internal document, Source Documents folder — no public URL found as of 21 Jul 2026 despite a dedicated online search)",
       "url": null,
       "date": "2026-07-19",
       "topics": [
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 4
+      "relevance": 3
     }
-  ]
+  ],
+  "criticismSummary": {
+    "tooFar": [
+      "Free-allocation conditionality is still too weak — companies keep what amounts to a de facto subsidy without a binding requirement to actually invest (EEB, Öko-Institut, Greens/EFA).",
+      "The lower LRF and softer MSR (cut intake rate, scrapped invalidation) risk a structural allowance oversupply through 2040, undermining the carbon-price signal (EEB, Öko-Institut).",
+      "Overall package direction \"rewards polluters\" and delays the pressure that drives industrial decarbonisation investment (EEB, Greens/EFA)."
+    ],
+    "notFarEnough": [
+      "New investment-linked free-allocation conditionality adds administrative burden and legal uncertainty without a genuine business case for the required investment (Cefic, EUROFER).",
+      "No structural, durable solution for carbon leakage on export markets — the long-promised CBAM export fix is still missing (Cefic, EUROFER).",
+      "The proposal doesn't address the underlying enabling conditions — affordable electricity/hydrogen, energy costs, investment certainty — needed for industry to actually decarbonise on the proposed timeline (Cefic, EUROFER)."
+    ]
+  }
 },
     "topics": [
   {
@@ -2666,7 +2705,7 @@ DOSSIERS = {
                 "intensity": 3,
                 "confidence": 3,
                 "source": "document",
-                "note": "S&D MEP letter (3 Jul 2026): explicitly wants to 'maintain the free allowances phase-out trajectory' as CBAM expands, and states industrial players profiting from free allowances while shifting investment abroad 'must end.' Directly opposed to E.ON's slower/tiered phase-out ask."
+                "note": "S&D MEP letter (3 Jul 2026): explicitly wants to 'maintain the free allowances phase-out trajectory' as CBAM expands, and states industrial players profiting from free allowances while shifting investment abroad 'must end.' Directly opposed to E.ON's slower/tiered phase-out ask. Reaffirmed post-proposal, though in more conditional terms: Wölken (17 Jul 2026, dpa-AFX) — flexibility and aid for industry should be tied to binding investment and job-preservation commitments, a 'conditional, not blanket' framing of free allocation, rather than a flat rejection."
               }
             },
             "weight": 1,
@@ -2724,16 +2763,16 @@ DOSSIERS = {
               "lrf": {
                 "stance": "support",
                 "intensity": 3,
-                "confidence": 2,
+                "confidence": 3,
                 "source": "document",
-                "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON."
+                "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) welcomed the Commission's 3.7%/1.7% LRF path as \"fully compatible\" with the 2040 target and 2050 neutrality — softer than the CDU/CSU's 3.4% ask but same direction; confidence upgraded to reflect his own on-the-record confirmation as rapporteur."
               },
               "freealloc": {
                 "stance": "support",
                 "intensity": 3,
-                "confidence": 2,
+                "confidence": 3,
                 "source": "document",
-                "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask."
+                "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) backs the conditionality approach in principle, provided \"frontrunners\" who have already invested aren't penalised, and industry isn't allowed to \"sit back and do nothing\" — same direction, more conditional framing than the pre-proposal CDU/CSU ask; confidence upgraded on his own confirmation as rapporteur."
               },
               "speculation": {
                 "stance": "support",
@@ -2754,7 +2793,7 @@ DOSSIERS = {
                 "intensity": 3,
                 "confidence": 2,
                 "source": "document",
-                "note": "'We need a review of ETS system... can't blame ETS for everything.' Defends ETS while pushing for reform — consistent with his existing FREEALLOC/LRF stances from the CDU/CSU note."
+                "note": "'We need a review of ETS system... can't blame ETS for everything.' Defends ETS while pushing for reform — consistent with his existing FREEALLOC/LRF stances from the CDU/CSU note. Confirmed post-proposal: called the Commission's proposal \"a good day for the climate, for competitiveness and, above all, for jobs\" (Liese/EPP press release, 17 Jul 2026)."
               }
             },
             "weight": 1,
@@ -2864,7 +2903,7 @@ DOSSIERS = {
                 "intensity": 3,
                 "confidence": 3,
                 "source": "document",
-                "note": "Greens/EFA MEP letter (3 Jul 2026, co-signed by Bloss as shadow rapporteur): explicitly wants to 'maintain the free allowances phase-out trajectory' as CBAM expands, states prolonging free allowances alongside CBAM 'would be against WTO rules,' and that industrial players profiting from free allowances while shifting investment abroad 'must end.' Directly opposed to E.ON's slower/tiered phase-out ask — upgrades the earlier inferred 2022-vintage read with a direct 2026 statement."
+                "note": "Greens/EFA MEP letter (3 Jul 2026, co-signed by Bloss as shadow rapporteur): explicitly wants to 'maintain the free allowances phase-out trajectory' as CBAM expands, states prolonging free allowances alongside CBAM 'would be against WTO rules,' and that industrial players profiting from free allowances while shifting investment abroad 'must end.' Directly opposed to E.ON's slower/tiered phase-out ask — upgrades the earlier inferred 2022-vintage read with a direct 2026 statement. Reaffirmed post-proposal: Greens/EFA press release (17 Jul 2026) — free allowances are 'nothing more than subsidies for the fossil fuel industry' (Matthieu); the proposal gives industry 'a licence to pollute for even longer and at a lower cost' (Bloss)."
               },
               "ets1general": {
                 "stance": "support",
@@ -2878,7 +2917,7 @@ DOSSIERS = {
                 "intensity": 3,
                 "confidence": 3,
                 "source": "document",
-                "note": "Greens/EFA MEP letter (3 Jul 2026): wants the LRF kept at 4.4%/yr until 2035, with only a slight reduction from 2036 — directly opposed to E.ON's ask of an earlier, lower LRF."
+                "note": "Greens/EFA MEP letter (3 Jul 2026): wants the LRF kept at 4.4%/yr until 2035, with only a slight reduction from 2036 — directly opposed to E.ON's ask of an earlier, lower LRF. Reaffirmed post-proposal: Bloss (17 Jul 2026, Greens/EFA press release) — the Commission's weakened trajectory 'harms companies that create jobs and growth through climate-friendly production' and 'holds back investment.'"
               },
               "mwi": {
                 "stance": "support",
@@ -8606,7 +8645,7 @@ DOSSIERS = {
                 "intensity": 1,
                 "confidence": 2,
                 "source": "document",
-                "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. No confirmed reaction from BMWE/Reiche specifically to the published Commission proposal (COM, 17 Jul 2026) has been found as of 21 Jul 2026 — the lrf/freealloc/msr/art29a stances above still rest on the pre-proposal Rheinische Post report of a Bundestag written-question response (Jun 2026), not a genuine post-proposal statement. Flagged pending a direct BMWE reaction; do not treat as confirmed post-proposal alignment."
               }
             }
           },
@@ -9819,15 +9858,6 @@ DOSSIERS = {
           "url": "https://www.europarl.europa.eu/committees/en/envi/home/highlights",
           "institution": "ep",
           "occurred": false
-        },
-        {
-          "date": "2026-06-11",
-          "title": "ETS2 Market Stability Reserve (MSR2) — Council/Parliament provisional trilogue agreement",
-          "status": "Occurred — ENVI formally endorsed 6 Jul 2026",
-          "note": "Council and Parliament reached a provisional agreement (11 Jun 2026, text finalised 24 Jun) strengthening ETS2's own market stability reserve: doubles the price-control release trigger from 20m to 40m allowances when the carbon price exceeds €45/tCO2e (2020 prices), extends the MSR's lifetime beyond 2030, and smooths releases below the 260m-allowance threshold to avoid a cliff-edge effect. ENVI endorsed the deal 6 Jul 2026, paving the way for final plenary approval. A separate, ETS1-specific MSR file (invalidation-cessation, 2026/0085/COD) remains on its own track (forecast first-reading plenary vote 14 Sep 2026, see below). This is a genuinely new finding not previously logged — surfaces as a signal that ETS2's institutional machinery is actively finalising, in some tension with the 10-country coalition's 14/15 Jul push (§ tracker note) to have ETS2 \"carefully reconsidered\" within the 17 July revision.",
-          "url": "https://www.consilium.europa.eu/en/press/press-releases/2026/06/11/ets2-market-stability-reserve-council-and-parliament-reach-provisional-agreement/",
-          "institution": "joint",
-          "occurred": true
         },
         {
           "date": "2026-07-01",
