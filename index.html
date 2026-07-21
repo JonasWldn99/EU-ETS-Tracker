@@ -960,10 +960,10 @@ function renderExecHeatmap(dossier) {
     beccs: 'Integrate BECCS / carbon removals',
     art29a: 'Strengthen Art. 29a price containment',
     speculation: 'No new EUA trading restrictions',
-    booster: 'Oppose auction frontloading',
+    frontload: 'Oppose auction frontloading (Booster)',
     mwi: 'Integrate waste incineration',
     freealloc: 'Slower free-allocation phase-out',
-    indirect: 'Extend indirect cost compensation',
+    indirect: 'Extend & harmonize indirect cost comp.',
     modfund: 'Maintain Modernisation Fund',
     ets2delay: 'No further ETS2 delay',
   };
@@ -1319,8 +1319,8 @@ DOSSIERS = {
       {
         "id": "frontload",
         "code": "BOOSTER",
-        "label": "Oppose auction frontloading / Investment Booster financing",
-        "eonPosition": "Oppose frontloading auction volumes or Investment Booster financing ahead of schedule."
+        "label": "Oppose auction frontloading to finance Investment Booster",
+        "eonPosition": "Oppose frontloading future auction volumes to finance the Investment Booster \u2014 rely on existing reserves or EU-level financing instead."
       },
       {
         "id": "mwi",
@@ -1337,8 +1337,8 @@ DOSSIERS = {
       {
         "id": "indirect",
         "code": "INDIRECT",
-        "label": "Extend indirect cost compensation beyond 2030 (EU-wide mandate)",
-        "eonPosition": "Extend indirect cost compensation beyond 2030 under an EU-wide mandate, not left to individual Member States."
+        "label": "Extend and harmonize indirect cost compensation",
+        "eonPosition": "Extend indirect cost compensation beyond 2030 and harmonize it at EU level (mandated in the ETS Directive), rather than leaving it to individual Member States."
       },
       {
         "id": "modfund",
@@ -1586,7 +1586,7 @@ DOSSIERS = {
             "name": "Peter Liese",
             "group": "EPP",
             "country": "DE",
-            "role": "EPP Coordinator, ENVI · <span class=\"role-hover\" title=\"Primary-source confirmed 17 Jul 2026 (Liese's own press release: 'will also serve as rapporteur... will begin work immediately'), upgrading the earlier 15 Jul Carbon Pulse leak. Rapporteur for the comprehensive ETS1 revision (COM(2026) 616); companion free-allocation benchmarks file (COM(2026) 620) led separately by Adam Jarubas (EPP, PL — not yet individually tracked, propose-only per §2). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.\">ETS1 Rapporteur (confirmed 17 Jul 2026, primary source)</span>",
+            "role": "EPP Coordinator, ENVI · <span class=\"role-hover\" title=\"Primary-source confirmed 17 Jul 2026 (Liese's own press release: 'will also serve as rapporteur... will begin work immediately'), upgrading the earlier 15 Jul Carbon Pulse leak. Rapporteur for the comprehensive ETS1 revision (COM(2026) 616); companion free-allocation benchmarks file (COM(2026) 619) led separately by Adam Jarubas (EPP, PL — not yet individually tracked, propose-only per §2). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.\">ETS1 Rapporteur (confirmed 17 Jul 2026, primary source)</span>",
             "parentId": "germany-epp-delegation",
             "stances": {
               "msr": {
@@ -8423,11 +8423,32 @@ DOSSIERS = {
                 "note": "Commits to reforming the MSR \"more comprehensively,\" complementing the targeted 1 April proposal, \"to ensure market stability and predictability, and avoid carbon price volatility.\" Directly aligned with E.ON."
               },
               "art29a": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Corrected 21 Jul 2026 per Jonas's explicit instruction: the actual filed text (COM(2026) 616 final) makes NO amendments to Art. 29a at all, despite SEC(2026)175's pre-proposal rhetoric about a \"predictable ETS price signal.\" Since the Commission has not proposed the strengthening E.ON asked for, this counts as a negative outcome on this specific ask, not a neutral one. E.ON's own first-assessment table scores this the worst mark (--) of all 13 asks."
+              },
+              "speculation": {
                 "stance": "support",
                 "intensity": 2,
                 "confidence": 3,
-                "source": "document",
-                "note": "General commitment to a \"predictable ETS price signal\" and avoiding volatility — directionally aligned, but does not name Art. 29a specifically."
+                "source": "research",
+                "note": "COM(2026) 616 final proposes no new EUA trading restrictions of any kind \u2014 fully aligned with E.ON's ask. (The only \"speculative\"-adjacent language in the text concerns CBAM authorisation applications and IDB project bidding, unrelated to EUA market participation.)"
+              },
+              "frontload": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Art. 10cc: the 400m-EUA Investment Booster (2028-2030) is drawn from the existing Free Allocation Buffer / New Entrants Reserve, not from frontloaded future auction volumes \u2014 structurally avoiding the REPowerEU-style precedent E.ON explicitly wanted to avoid."
+              },
+              "indirect": {
+                "stance": "neutral",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 (aligned with E.ON), but it remains a national State-aid measure rather than an EU-wide harmonised mandate \u2014 not aligned with E.ON's specific ask to mandate it EU-wide in the Directive itself."
               },
               "freealloc": {
                 "stance": "support",
@@ -8461,8 +8482,8 @@ DOSSIERS = {
                 "stance": "support",
                 "intensity": 3,
                 "confidence": 3,
-                "source": "manual",
-                "note": "Commission opposes any further ETS2 delay, aligned with E.ON's ask to keep the ETS1/ETS2 backbone on schedule."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026 to primary — COM(2026) 616 final (Jonas-supplied) states explicitly: \"ETS2 is excluded from the scope of this proposal as it will become fully operational in 2028, its application is due for review by 2029, and any assessment of the feasibility of integrating the sectors under ETS2 into the EU ETS is due by 2031.\" No delay proposed. Fully aligned with E.ON's ask to keep the ETS1/ETS2 backbone on schedule."
               },
               "ets1general": {
                 "stance": "support",
@@ -8514,11 +8535,32 @@ DOSSIERS = {
                 "note": "SEC(2026)175: commits to comprehensive MSR reform for stability/predictability, complementing the 1 April targeted proposal."
               },
               "art29a": {
+                "stance": "oppose",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Corrected 21 Jul 2026 per Jonas's explicit instruction: the actual filed text (COM(2026) 616 final) makes NO amendments to Art. 29a at all, despite SEC(2026)175's earlier general price-predictability rhetoric. Since the Commission has not proposed the strengthening E.ON asked for, this counts as a negative outcome, not neutral. See Cabinet Hoekstra entry."
+              },
+              "speculation": {
                 "stance": "support",
                 "intensity": 2,
                 "confidence": 3,
-                "source": "document",
-                "note": "SEC(2026)175: general price-predictability commitment, no explicit Art. 29a reference."
+                "source": "research",
+                "note": "COM(2026) 616 final proposes no new EUA trading restrictions \u2014 fully aligned with E.ON's ask. See Cabinet Hoekstra entry."
+              },
+              "frontload": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Art. 10cc: the Investment Booster is drawn from the existing Free Allocation Buffer / New Entrants Reserve, not frontloaded future auction volumes. See Cabinet Hoekstra entry."
+              },
+              "indirect": {
+                "stance": "neutral",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "research",
+                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 but leaves it a national State-aid measure rather than an EU-wide harmonised mandate. See Cabinet Hoekstra entry."
               },
               "freealloc": {
                 "stance": "support",
@@ -8552,8 +8594,8 @@ DOSSIERS = {
                 "stance": "support",
                 "intensity": 3,
                 "confidence": 3,
-                "source": "manual",
-                "note": "Commission opposes any further ETS2 delay, aligned with E.ON's ask to keep the ETS1/ETS2 backbone on schedule."
+                "source": "research",
+                "note": "Upgraded 21 Jul 2026 to primary — COM(2026) 616 final (Jonas-supplied) states explicitly: \"ETS2 is excluded from the scope of this proposal as it will become fully operational in 2028, its application is due for review by 2029, and any assessment of the feasibility of integrating the sectors under ETS2 into the EU ETS is due by 2031.\" No delay proposed. Fully aligned with E.ON's ask to keep the ETS1/ETS2 backbone on schedule."
               },
               "ets1general": {
                 "stance": "support",
@@ -8569,7 +8611,7 @@ DOSSIERS = {
       }
     ],
     "overview": {
-      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final, presented by EVP Ribera, Commissioner Hoekstra and Commissioner Jørgensen — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed elements: LRF cut to 3.7%/yr from 2031 and 1.7%/yr from 2036 (from today's 4.3%); free allocation and CBAM-sector protection extended from 2034 to 2038, conditional from 2031 on a verified decarbonisation investment plan (80% upfront, 20% on demonstrated reductions), with the lowest 10% of emitters exempt and zero-emission installations able to stay in the ETS to 2040; the MSR's automatic-invalidation mechanism ended, allowances retained as a stability buffer (the same change as the standalone 2026/0085(COD) file, now folded in); an Investment Booster of 400m EUAs (~€30bn) to 2030 plus ~€70bn more biddable from 2031; scope expanded to flights up to 5,000km, municipal waste incineration, and strengthened maritime rules. A companion proposal (COM(2026) 620) on sector-specific fallback benchmarks was tabled the same day (~€4bn in added free allocation, 2026-2030). Council remains split: a 10-country bloc led by Italy (plus Poland, Czechia, Romania, Slovakia, Hungary, Bulgaria, Cyprus, Estonia, Austria, Greece) wants further loosening, against 7 countries (Netherlands, Denmark, Spain, Finland, Portugal, Luxembourg, Sweden) defending ambition; Germany and France remain brokers. Per lead EP rapporteur Peter Liese (EPP), Council and Parliament must set their negotiating positions by end-2026 for trilogue to start January 2027 — faster than the Q1 2027 'One Europe, One Market' target below. Hoekstra rejected claims the proposal undermines EU climate law as 'completely climate-law proof.' This is now the highest-stakes EU energy-policy file in motion for E.ON's cost base and 2030s investment case.",
+      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final (Arts. 9, 9b, 9c, 10a, 10cc, 10d, 12a/b), plus a companion fallback-benchmarks proposal COM(2026) 619 final (2026/0211(COD), ~€4bn added free allocation 2026-2030) — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed via the primary text: LRF cut to 3.7%/yr 2031-2035 and 1.7%/yr from 2036 (Art. 9), reverting to 2.7% if up to 260m Art. 6 international credits prove unavailable (Art. 9b); a further 250m allowances earmarked 2031-2040 to purchase domestic BECCS/DACCS removals (Art. 9c); free allocation and CBAM-sector protection extended to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (80% upfront, 20% on demonstrated reductions, Art. 10a), lowest 10% of emitters exempt; MSR automatic-invalidation ended (folds in 2026/0085(COD)); Investment Booster 400m EUAs (~€30bn) to 2030 via the new Industrial Decarbonisation Bank (Art. 10cc); Modernisation Fund continued 2031-2040 at a reduced 2% cap-share plus a new 0.5% IDB-linked stream (Art. 10d). Notably, Art. 29a (price containment) is left entirely untouched — a real gap against E.ON's ask. Council remains split: a 10-country bloc led by Italy wants further loosening; 7 countries (NL, DK, ES, FI, PT, LU, SE) defend ambition; DE/FR broker. Per EP rapporteur Liese, Council/Parliament must set positions by end-2026 for a January 2027 trilogue start. Highest-stakes EU energy file in motion for E.ON's cost base and 2030s investment case; E.ON's own first assessment (position paper vs. filed text) shows majority alignment on LRF/MSR/BECCS/threshold/trading, mixed-to-negative on Art. 29a, CBAM export protection, and revenue earmarking effectiveness.",
       "milestones": [
         {
           "date": "2026-07-17",
@@ -8583,8 +8625,8 @@ DOSSIERS = {
         {
           "date": "2026-07-17",
           "title": "Companion proposal: increased free allocation via revised fallback benchmarks",
-          "status": "Occurred — tabled same-day as COM(2026) 620 final",
-          "note": "Séjourné (Commission EVP for Prosperity and Industrial Strategy) had announced on 26 Jun 2026 that the ETS1 revision would be accompanied same-day by a dedicated proposal raising free allocation via sector-specific fallback benchmarks. Confirmed tabled 17 Jul 2026 as COM(2026) 620 final (climate.ec.europa.eu) — introduces sector-specific fallback benchmarks and addresses fuel/electricity ‘exchangeability’ for industry, worth an estimated €4bn in free allocation over 2026-2030 (a lower figure than the ~€6bn earlier estimate circulating pre-publication — flagged as a discrepancy, not yet reconciled against the primary text in detail). Directly relevant to E.ON's FREEALLOC ask.",
+          "status": "Occurred — tabled same-day as COM(2026) 619 final",
+          "note": "Confirmed tabled 17 Jul 2026 as COM(2026) 619 final, procedure 2026/0211(COD) (corrected 21 Jul 2026 from an earlier COM(2026) 620 mislabel, now fixed against Jonas-supplied primary text). Amends only the heat/fuel fallback-benchmark values for 2026-2030 (does not touch post-2031 rules, which sit in the main COM(2026) 616 text) — worth an estimated €4bn in added free allocation over 2026-2030 (a lower figure than the ~€6bn earlier pre-publication estimate; still not reconciled in detail against the primary text or its impact assessment). Directly relevant to E.ON's FREEALLOC ask.",
           "url": "https://climate.ec.europa.eu/document/download/2a0f3e9c-5562-4253-8327-dc7bea886ed8_en",
           "institution": "comm",
           "occurred": true
@@ -8778,7 +8820,7 @@ DOSSIERS = {
         {
           "date": "2026-07-17",
           "headline": "CONFIRMED: Commission formally tables ETS1 revision as COM(2026) 616 final \u2014 LRF to 3.7%/1.7%, free allocation to 2038, MSR invalidation ended, Investment Booster confirmed",
-          "summary": "The Commission published the actual text (COM(2026) 616 final, 17.7.2026), presented by EVP Ribera, Commissioner Hoekstra and Commissioner J\u00f8rgensen \u2014 superseding the Reuters/Bloomberg pre-publication leaks logged earlier this week. Confirmed final figures: LRF cut to 3.7%/yr from 2031 and 1.7%/yr from 2036 (from 4.3% today) \u2014 closer to Reuters' preview than Bloomberg's softer leak. Free allocation and CBAM-sector protection extended from 2034 to 2038; from 2031 all free allocation is conditional on a verified decarbonisation investment plan (80% on approval, 20% on demonstrated reductions), with the lowest 10% of emitters exempt from conditionality and zero-emission installations able to stay in the ETS to 2040 (from 2030). The MSR's automatic-invalidation mechanism is ended, with allowances retained as a stability buffer \u2014 the same change as the standalone 2026/0085(COD) file, now folded into the comprehensive text. Investment Booster confirmed: 400m EUAs (~\u20ac30bn) to 2030, plus ~\u20ac70bn more biddable from 2031. Scope expands to flights up to 5,000km, municipal waste incineration, and strengthened maritime rules. A companion proposal (COM(2026) 620 final) on sector-specific fallback benchmarks was tabled the same day (~\u20ac4bn added free allocation, 2026-2030). Peter Liese (EPP rapporteur, already tracked) welcomed it publicly same-day, confirming Council and Parliament must set negotiating positions by end-2026 for trilogue to start January 2027. ENVI Chair Maran issued an official statement the same day affirming the ETS as a \u201ckey pillar\u201d of EU climate and industrial policy, citing over \u20ac250bn raised since 2013.",
+          "summary": "The Commission published the actual text (COM(2026) 616 final, 17.7.2026), presented by EVP Ribera, Commissioner Hoekstra and Commissioner J\u00f8rgensen \u2014 superseding the Reuters/Bloomberg pre-publication leaks logged earlier this week. Confirmed final figures: LRF cut to 3.7%/yr from 2031 and 1.7%/yr from 2036 (from 4.3% today) \u2014 closer to Reuters' preview than Bloomberg's softer leak. Free allocation and CBAM-sector protection extended from 2034 to 2038; from 2031 all free allocation is conditional on a verified decarbonisation investment plan (80% on approval, 20% on demonstrated reductions), with the lowest 10% of emitters exempt from conditionality and zero-emission installations able to stay in the ETS to 2040 (from 2030). The MSR's automatic-invalidation mechanism is ended, with allowances retained as a stability buffer \u2014 the same change as the standalone 2026/0085(COD) file, now folded into the comprehensive text. Investment Booster confirmed: 400m EUAs (~\u20ac30bn) to 2030, plus ~\u20ac70bn more biddable from 2031. Scope expands to flights up to 5,000km, municipal waste incineration, and strengthened maritime rules. A companion proposal (COM(2026) 619 final) on sector-specific fallback benchmarks was tabled the same day (~\u20ac4bn added free allocation, 2026-2030). Peter Liese (EPP rapporteur, already tracked) welcomed it publicly same-day, confirming Council and Parliament must set negotiating positions by end-2026 for trilogue to start January 2027. ENVI Chair Maran issued an official statement the same day affirming the ETS as a \u201ckey pillar\u201d of EU climate and industrial policy, citing over \u20ac250bn raised since 2013.",
           "impactNote": "This replaces the pre-publication preview logged Friday morning with verified primary figures \u2014 the 3.7%/1.7% LRF path and the 2038 free-allocation extension are now confirmed facts, not leaks, and should anchor all further E.ON positioning on this file. The frontrunner exemption (lowest 10% of emitters exempt from conditionality) and the zero-emission-to-2040 carve-out are new details not previously flagged \u2014 both are directly relevant to E.ON's Glueck-lesson-sensitive FREEALLOC ask and worth a closer read of the actual conditionality Annex. The 2026-end/Jan-2027-trilogue timeline (per Liese) is more specific than the standing Q1 2027 joint target and worth tracking as the operative near-term deadline.",
           "sourceLabel": "European Commission (COM(2026) 616 final); EPP Group press release (Liese)",
           "sourceUrl": "https://climate.ec.europa.eu/document/download/c0b4ca8e-0e12-4b4e-9976-98c0b4224410_en"
