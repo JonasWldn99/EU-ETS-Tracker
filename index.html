@@ -1278,7 +1278,7 @@ DOSSIERS = {
     "id": "ets1",
     "title": "ETS1 Stakeholder Map",
     "subtitle": "E.ON POLITICAL AFFAIRS — EU ETS1 REVIEW · COM(2026)153 / UPCOMING JULY 2026 PROPOSAL",
-    "lastUpdated": "2026-07-20",
+    "lastUpdated": "2026-07-21",
     "topics": [
       {
         "id": "ets1general",
@@ -1586,7 +1586,7 @@ DOSSIERS = {
             "name": "Peter Liese",
             "group": "EPP",
             "country": "DE",
-            "role": "EPP Coordinator, ENVI · <span class=\"role-hover\" title=\"Confirmed 15 Jul 2026 (Carbon Pulse) as Parliament's lead negotiator for the ETS1 revision itself; the companion free-allocation benchmarks file will be led separately by Adam Jarubas (EPP, PL — not yet individually tracked, propose-only per §2). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.\">ETS1 Rapporteur (confirmed 15 Jul 2026)</span>",
+            "role": "EPP Coordinator, ENVI · <span class=\"role-hover\" title=\"Primary-source confirmed 17 Jul 2026 (Liese's own press release: 'will also serve as rapporteur... will begin work immediately'), upgrading the earlier 15 Jul Carbon Pulse leak. Rapporteur for the comprehensive ETS1 revision (COM(2026) 616); companion free-allocation benchmarks file (COM(2026) 620) led separately by Adam Jarubas (EPP, PL — not yet individually tracked, propose-only per §2). Long-standing ETS rapporteur on prior files (2018, 2022); widely seen as instrumental in brokering EPP's group-level ETS position.\">ETS1 Rapporteur (confirmed 17 Jul 2026, primary source)</span>",
             "parentId": "germany-epp-delegation",
             "stances": {
               "msr": {
@@ -7430,10 +7430,11 @@ DOSSIERS = {
               },
               "ets1general": {
                 "stance": "support",
-                "intensity": 1,
-                "confidence": 2,
-                "source": "document",
-                "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                "intensity": 3,
+                "confidence": 3,
+                "source": "research",
+                "url": "https://www.bundesumweltministerium.de/pressemitteilung/eu-kommission-legt-vorschlag-fuer-reform-des-europaeischen-emissionshandels-vor",
+                "note": "Upgraded 21 Jul 2026 \u2014 BMUKN's own press release (18 Jul, Nr. 095/26) quotes Schneider calling the ETS \u2018the heart of European climate policy and the most important market-based driver of investment\u2019, explicitly welcoming the Investment Booster and fallback-benchmark flexibilities and stressing frontrunners must not be penalised. Supersedes the earlier Eurelectric-survey-derived tag (document, conf 2)."
               }
             }
           },
@@ -8670,13 +8671,13 @@ DOSSIERS = {
           "occurred": false
         }
       ],
-      "milestonesLastChecked": "2026-07-20",
+      "milestonesLastChecked": "2026-07-21",
       "euaPrice": {
         "unit": "EUR/tCO2",
         "instrument": "EU Carbon Permits — EEX-linked EUA benchmark (Trading Economics aggregation)",
         "sourceLabel": "Trading Economics",
         "sourceUrl": "https://tradingeconomics.com/commodity/carbon",
-        "asOfDate": "2026-07-20",
+        "asOfDate": "2026-07-21",
         "history": [
           {
             "date": "2025-07-11",
@@ -8747,13 +8748,25 @@ DOSSIERS = {
           },
           {
             "date": "2026-07-20",
-            "price": 79.33,
+            "price": 83.27
+          },
+          {
+            "date": "2026-07-21",
+            "price": 83.80,
             "provisional": true
           }
         ],
         "methodologyNote": "Chart always shows a trailing 12-month window (today back to this date last year) — older points drop off as new ones are logged each morning update, so the series stays exactly one year long. 11 of 13 points are dated, same-day Trading Economics 'X-week high/low' prints, each opened and dateline-checked before use (a same-day search misattributed a 22 Jun 2026 figure to 9 Jul 2026 during the 11 Jul run, corrected after verification): 2026-02-12 (23-week low, lowest since Sep 2025), 2026-03-02 (42-week low, lowest since May 2025), 2026-04-01/04-16/05-26 (weekly-high prints), plus the Jun-Jul 2026 points already logged. 2025-12-15 (+3% MoM/+30% YoY) is from carboncredits.com. Only 2025-07-11 and 2025-09-15 remain approx:true (no single dated print found; interpolated from the EU Commission's reported 2025 EUR60-80 range and the implied Sep-2025 level from the Feb-2026 '23-week low' comparison) — the 2026-01-15 peak is also approx:true (gmk.center reported 'exceeded EUR90' without an exact date/price). 2026-07-15 was corrected from an initial €80.89 (a same-day Chrome-rendered intraday read) to €81.16 after two independent same-day-plus-one confirmations: Bloomberg (Krukowska/Nardelli, 15 Jul) and Trading Economics' own 16 Jul “Previous” field both pointing to 81.16. 2026-07-16 was itself corrected on 17 Jul from an initial €80.82 (a same-day Chrome-rendered intraday-adjacent read) to €79.19 — the same intraday-vs-settle pattern seen on 15 Jul: Trading Economics' 17 Jul read now shows “fell to 79.19 EUR on July 16, 2026, down 2.43% from the previous day” with Previous=81.16 (consistent with the already-logged 15 Jul point), confirming 79.19 as 16 Jul's final settle. As of this 17 Jul morning check, only an intraday tick (78.81, -0.48%, timestamped 08:20 CET) is available for 17 Jul itself — not logged, per the standing rule against logging unsettled intraday prices; expect a same-day follow-up check once the market close print is available, especially given today is also the date of the Commission's ETS1 revision proposal. Day-over-day change shown in the UI is always computed from the two most recent logged points, never copied from source-site percentage text. 2026-07-17 (\u20ac79.11) was filled retroactively on the 20 Jul run \u2014 backed out from that day's own \"Previous\" field on Trading Economics, since the 17 Jul intraday tick (78.81) seen that morning was, per the standing intraday-vs-settle pattern (15\u219216 Jul, 16\u219217 Jul), never logged as final; a same-day Trading Economics news item also flagged a \u201c4-week low\u201d of \u20ac78.26 dated 17 Jul, but that reads as an intraday trough rather than the settle and was not used, consistent with this pattern. 2026-07-20 (\u20ac79.33) is a same-session Chrome-rendered read (\u201crose to 79.33 EUR on July 20, 2026\u201d, flagged provisional:true) \u2014 treat as subject to revision once Tuesday's \"Previous\" field confirms it, per the same recurring lesson."
       },
       "headlineOfDay": [
+        {
+          "date": "2026-07-21",
+          "headline": "EUAs grind to fresh 2026 highs (\u20ac83.80) as market digests the ETS1 package; Schneider (BMUKN) and Liese both give primary-source confirmation of already-tracked stances",
+          "summary": "EU carbon prices extended their post-proposal rally: Trading Economics' settle for 20 July confirmed at \u20ac83.27 (up from \u20ac79.11 on 17 Jul, roughly +5.3% in three trading sessions), with an intraday read of \u20ac83.80 on 21 Jul (provisional, pending tomorrow's settle) \u2014 a 23-week high. Carbon Pulse's Monday midday note had flagged the package as \u2018largely priced in\u2019 immediately after publication, but the continued grind higher into this week suggests the market is reading the reform as more price-supportive than first assumed. Separately, two already-tracked stances received primary-source upgrades: Bundesumweltminister Carsten Schneider's own BMUKN press release (18 Jul, Nr. 095/26) gave full backing to the Commission's proposal \u2014 calling the ETS \u2018the heart of European climate policy and the most important market-based driver of investment\u2019 \u2014 explicitly welcoming the Investment Booster and the fallback-benchmark flexibilities for chemicals/steel/basic materials, and stressing that companies which have already invested must not be penalised. Peter Liese's own 17 July press release (previously sourced only via a 15 Jul Carbon Pulse leak) now confirms in his own words that he \u2018will also serve as rapporteur\u2019 on the file and will \u2018begin work immediately\u2019, reconfirming the end-2026 Council/Parliament positions and January 2027 trilogue timeline.",
+          "impactNote": "No polarity changes \u2014 both updates reinforce stances already logged (Germany/Schneider ETS1GENERAL=support; Liese as EP rapporteur) but move sourcing from secondary/leak to primary, so confidence has been upgraded accordingly in the tracker. The sustained price strength above \u20ac80 despite the reform's industry-friendly easing is worth flagging to Jonas: it somewhat undercuts the argument that the reform alone solves industry cost pressure, and keeps the investment-signal case behind E.ON's LRF/MSR asks intact even after the free-allocation extension.",
+          "sourceLabel": "Trading Economics; Carbon Pulse (Euro Markets, 20 Jul); BMUKN Pressemitteilung Nr. 095/26 (18 Jul); Peter Liese official press release (17 Jul)",
+          "sourceUrl": "https://tradingeconomics.com/commodity/carbon"
+        },
         {
           "date": "2026-07-20",
           "headline": "Weekend fallout: Council splits 10-7 over the published ETS1 text; Bloss accuses Commission of a \u2018licence to pollute\u2019, Hoekstra calls the figures \u2018completely climate-law proof\u2019",
@@ -8785,14 +8798,6 @@ DOSSIERS = {
           "impactNote": "This is the clearest concrete evidence yet of a blocking coalition on ETS2/FREEALLOC conditionality \u2014 five of E.ON's 11 tracked Council countries (Poland, Czechia, Romania, Hungary, Slovakia) plus Italy are now on record, alongside four newly-promoted signatories (Bulgaria, Cyprus, Estonia, Greece). The free-allocation ask (no broad conditions) is directionally aligned with E.ON's own FREEALLOC position, though framed as blanket relief rather than E.ON's tiered-by-leakage-risk approach \u2014 a nuance worth watching as the file develops. The Liese/Jarubas negotiator confirmation remains separately important: outreach to Jarubas's office is warranted given his direct benchmarks/free-allocation mandate.",
           "sourceLabel": "Reuters (Kate Abnett)",
           "sourceUrl": "https://wiky.com/2026/07/15/ten-countries-urge-eu-to-rethink-new-carbon-price-on-fuel/"
-        },
-        {
-          "date": "2026-07-14",
-          "headline": "EUAs advance as EU wraps up its \u20ac20bn REPowerEU auction programme, cutting auction supply 20% through August",
-          "summary": "Carbon Pulse reported European carbon prices rose on Monday after the EU completed a REPowerEU allowance-auction programme that raised \u20ac20bn, with auction volumes now cut 20% through end-August \u2014 a genuine near-term supply-tightening signal, even as the Strait of Hormuz conflict pushed energy costs higher generally. Separately, Lower Saxony's Minister President Olaf Lies (SPD) and IG BCE union chief Michael Vassiliadis published a Handelsblatt guest column arguing the Commission's reform plans still don't go far enough for energy-intensive industry \u2014 a reminder that domestic German political pressure on the file keeps building three days out from the proposal.",
-          "impactNote": "The 20% auction-supply cut is a concrete, price-relevant mechanical signal (tighter near-term supply, all else equal bullish for EUAs) rather than just pre-proposal noise \u2014 worth flagging separately from the broader \u201cmarket waits for the text\u201d narrative. The Lies/Vassiliadis intervention is a fresh, senior (Land-level SPD + major industrial union) voice in the German debate, though neither is a directly tracked entity in this tool.",
-          "sourceLabel": "Carbon Pulse",
-          "sourceUrl": "https://carbon-pulse.com/530833/"
         }
       ]
     }
