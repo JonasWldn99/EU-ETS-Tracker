@@ -278,6 +278,10 @@
   .reaction-card2-source { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); margin-top: 6px; }
   .reaction-actor2 a { color: var(--text-primary); text-decoration: none; border-bottom: 1px dotted var(--text-tertiary); }
   .reaction-actor2 a:hover { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+  .reaction-card2--group { border-left-width: 4px; }
+  .reaction-group-members { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .reaction-card2--member { margin-bottom: 6px; opacity: 0.92; }
+  .reaction-card2--member:last-child { margin-bottom: 0; }
   .cd-legaltext { margin-top: 8px; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; }
   .cd-legaltext-ref { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 6px; }
   .cd-legaltext-body { font-size: 11px; line-height: 1.6; color: var(--text-secondary); font-style: italic; white-space: normal; }
@@ -1641,9 +1645,27 @@ function reactionCard2HTML(r) {
   </div>`;
 }
 
+function flattenReactionEntries(list) {
+  // Party-group cards (EPP/S&D/Renew/Greens-EFA) carry a `members` array of individually-sourced
+  // MEPs rather than being a single voice themselves -- for counting purposes (pie chart, tone
+  // distribution, totals) each member counts separately, exactly as if they were still top-level
+  // entries; only the visual "show 5 per column" cap treats the group as a single card. Non-group
+  // entries (single actors) pass through unchanged.
+  const out = [];
+  (list || []).forEach(x => {
+    if (x.members && x.members.length) out.push(...x.members);
+    else out.push(x);
+  });
+  return out;
+}
+
 function reactionToneBuckets(d) {
   const r = d.reactions || {};
-  const all = [].concat(r.institutional || [], r.business || [], r.ngoThinkTank || []);
+  const all = [].concat(
+    flattenReactionEntries(r.institutional),
+    flattenReactionEntries(r.business),
+    flattenReactionEntries(r.ngoThinkTank)
+  );
   const buckets = { welcome: [], toofar: [], notenough: [], mixed: [] };
   all.forEach(x => {
     if (x.stance === 'support') buckets.welcome.push(x);
@@ -1708,6 +1730,56 @@ function reactionCriticismsRowHTML(d) {
   </div>`;
 }
 
+function reactionGroupCard2HTML(r, groupKey) {
+  // Party-group card (EPP/S&D/Renew Europe/Greens-EFA): shows the group's own rollup summary by
+  // default, with an expand toggle revealing each individual member's separately-sourced quote.
+  // Same visual language as a single-actor card (reactionCard2HTML), just with a member list nested
+  // inside instead of one text block, and its own independent expand state (separate from the
+  // column-level "show 5 more" toggle).
+  const roleHTML = r.role ? ` <span class="reaction-card2-role">(${r.role})</span>` : '';
+  const nameHTML = r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${r.actor}</a>` : r.actor;
+  const topicsHTML = (r.topics || []).map(code => `<span class="reaction-topic-tag">${code}</span>`).join('');
+  const toneCls = r.stance === 'support' ? 'reaction-tone-support' : r.stance === 'oppose' ? 'reaction-tone-oppose' : 'reaction-tone-neutral';
+  const critiqueHTML = (r.stance === 'oppose' && r.critiqueType)
+    ? `<div class="reaction-card2-critique">${r.critiqueType === 'notFarEnough' ? 'Critical — not far enough on competitiveness' : 'Critical — weakens the ETS too much'}</div>`
+    : '';
+  const memberExpandKey = `reactionmembers-${groupKey}-${r.actor.replace(/\s+/g, '')}`;
+  const memberExpanded = !!expandState[memberExpandKey];
+  const memberCount = (r.members || []).length;
+  const memberToggleHTML = memberCount
+    ? `<div class="cd-expand-toggle" onclick="toggleExpand('${memberExpandKey}'); renderLegislativeView();">${memberExpanded ? `▾ Hide ${memberCount} individual voice${memberCount > 1 ? 's' : ''}` : `▸ Show ${memberCount} individual voice${memberCount > 1 ? 's' : ''}`}</div>`
+    : '';
+  const membersHTML = memberExpanded
+    ? `<div class="reaction-group-members">${(r.members || []).map(m => {
+        const mRoleHTML = m.role ? ` <span class="reaction-card2-role">(${m.role})</span>` : '';
+        const mNameHTML = m.url ? `<a href="${m.url}" target="_blank" rel="noopener">${m.actor}</a>` : m.actor;
+        const mToneCls = m.stance === 'support' ? 'reaction-tone-support' : m.stance === 'oppose' ? 'reaction-tone-oppose' : 'reaction-tone-neutral';
+        const mCritiqueHTML = (m.stance === 'oppose' && m.critiqueType)
+          ? `<div class="reaction-card2-critique">${m.critiqueType === 'notFarEnough' ? 'Critical — not far enough on competitiveness' : 'Critical — weakens the ETS too much'}</div>`
+          : '';
+        const mTopicsHTML = (m.topics || []).map(code => `<span class="reaction-topic-tag">${code}</span>`).join('');
+        return `<div class="reaction-card2 reaction-card2--member ${mToneCls}">
+          <div class="reaction-card2-head"><span class="reaction-actor2">${mNameHTML}${mRoleHTML}</span></div>
+          ${mCritiqueHTML}
+          <div class="reaction-card2-text">${m.text}</div>
+          <div class="reaction-card2-topics">${mTopicsHTML}</div>
+          <div class="reaction-card2-source">${m.source}${m.date ? ' · ' + m.date : ''}</div>
+        </div>`;
+      }).join('')}</div>`
+    : '';
+  return `<div class="reaction-card2 reaction-card2--group ${toneCls}">
+    <div class="reaction-card2-head">
+      <span class="reaction-actor2">${nameHTML}${roleHTML}</span>
+    </div>
+    ${critiqueHTML}
+    <div class="reaction-card2-text">${r.text}</div>
+    <div class="reaction-card2-topics">${topicsHTML}</div>
+    <div class="reaction-card2-source">${r.source}${r.date ? ' · ' + r.date : ''}</div>
+    ${memberToggleHTML}
+    ${membersHTML}
+  </div>`;
+}
+
 function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel) {
   const DEFAULT_SHOWN = 5;
   const sorted = (list || []).slice().sort((a, b) => {
@@ -1724,7 +1796,7 @@ function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel) {
     ? `<div class="cd-expand-toggle" onclick="toggleExpand('${expandKey}'); renderLegislativeView();">${isExpanded ? '▾ Hide' : `▸ Show ${rest} more`}</div>`
     : '';
   const bodyHTML = sorted.length
-    ? shown.map(reactionCard2HTML).join('') + toggleHTML
+    ? shown.map(item => item.members && item.members.length ? reactionGroupCard2HTML(item, groupKey) : reactionCard2HTML(item)).join('') + toggleHTML
     : `<div class="reaction-empty">No ${emptyLabel} reactions tracked yet.</div>`;
   return `<div class="reaction-feed-col">
     <div class="reaction-feed-col-title">${colTitle}</div>
@@ -1844,27 +1916,45 @@ DOSSIERS = {
     "reactions": {
   "institutional": [
     {
-      "actor": "Peter Liese",
-      "actorType": "MEP",
-      "role": "EPP, Rapporteur",
+      "actor": "EPP",
+      "actorType": "EP Political Group",
+      "role": "Lead negotiating group via rapporteur Peter Liese",
       "stance": "support",
-      "text": "Called the proposal “a good day for the climate, for competitiveness and, above all, for jobs.” Welcomed the 3.7%/1.7% LRF path as “fully compatible with the EU's 2040 climate target and the goal of climate neutrality by 2050.” On free allocation, backs the conditionality approach in principle provided “frontrunners” who have already invested aren't penalised, and industry is given time but not allowed to “sit back and do nothing.” No formal amendments tabled yet.",
-      "source": "Liese/EPP Group press release",
-      "url": "https://www.eppgroup.eu/newsroom/ets-reform-can-protect-jobs-and-achieve-climate-goals",
-      "date": "2026-07-17",
+      "text": "Group reaction so far channelled through rapporteur Peter Liese: welcomed the proposal as \u201ca good day for the climate, for competitiveness and, above all, for jobs\u201d (17 Jul), then set out concrete amendment priorities in a 24 Jul interview \u2014 a reshaped LRF path, tighter earmarking of ETS revenues toward hard-to-abate sectors, and site-specific investment conditions on free allocation.",
+      "source": "Liese/EPP Group press release (17 Jul); Contexte interview (24 Jul)",
+      "url": "https://www.eppgroup.eu/",
+      "date": "2026-07-24",
       "topics": [
         "ETS1",
         "LRF",
-        "FREEALLOC"
+        "FREEALLOC",
+        "REVENUE"
       ],
-      "relevance": 1
+      "relevance": 1,
+      "members": [
+        {
+          "actor": "Peter Liese",
+          "role": "EPP, Rapporteur",
+          "stance": "support",
+          "text": "Called the proposal \u201ca good day for the climate, for competitiveness and, above all, for jobs\u201d (17 Jul). In a 24 Jul Contexte interview, sharpened his amendment priorities: wants the LRF \u201ca bit too high in the first five years and a bit too low in the second part\u201d \u2014 i.e. more flexibility 2031\u201335, more stringency from 2036 \u2014 wants the Commission\u2019s 50%-to-ETS-sectors revenue rule sub-targeted so 20\u201330% of that share is reserved specifically for hard-to-abate industries (steel, chemical, cement, lime) rather than broad electrification spending, and wants free-allocation conditionality tied to investment at the specific site that received the allowances rather than the Commission\u2019s proposed company-level/pooled flexibility. Confirms he intends to finalise his draft rapporteur report \u201cas early as September.\u201d",
+          "source": "Liese/EPP Group press release (17 Jul); Contexte interview (24 Jul, primary)",
+          "url": "https://www.eppgroup.eu/newsroom/ets-reform-can-protect-jobs-and-achieve-climate-goals",
+          "date": "2026-07-24",
+          "topics": [
+            "ETS1",
+            "LRF",
+            "FREEALLOC",
+            "REVENUE"
+          ]
+        }
+      ]
     },
     {
       "actor": "Germany (BMUKN/Schneider)",
       "actorType": "Council/Member State",
-      "role": "Federal Government — Environment Ministry",
+      "role": "Federal Government \u2014 Environment Ministry",
       "stance": "support",
-      "text": "Environment Minister Carsten Schneider (BMUKN): “emissions trading has proven effective and remains the cornerstone of European climate policy and the most important market-based driver of investment”; welcomes the fallback-benchmark flexibilities for energy-intensive industries and calls the Investment Booster/IDB approach “a step in the right direction.”",
+      "text": "Environment Minister Carsten Schneider (BMUKN): \u201cemissions trading has proven effective and remains the cornerstone of European climate policy and the most important market-based driver of investment\u201d; welcomes the fallback-benchmark flexibilities for energy-intensive industries and calls the Investment Booster/IDB approach \u201ca step in the right direction.\u201d",
       "source": "BMUKN Pressemitteilung Nr. 095/26",
       "url": "https://www.bundesumweltministerium.de/pressemitteilung/eu-kommission-legt-vorschlag-fuer-reform-des-europaeischen-emissionshandels-vor",
       "date": "2026-07-18",
@@ -1876,50 +1966,138 @@ DOSSIERS = {
       "relevance": 2
     },
     {
-      "actor": "Greens/EFA (Bloss, Matthieu, Reintke)",
-      "actorType": "MEP",
+      "actor": "Sweden (Westl\u00e9n)",
+      "actorType": "Council/Member State",
+      "role": "State Secretary for Climate and the Environment",
+      "stance": "oppose",
+      "critiqueType": "tooWeak",
+      "text": "State Secretary Daniel Westl\u00e9n, speaking at the 23-24 Jul Dublin informal Environment Council: the slower reform \u2018is rewarding those who didn\u2019t do their homework \u2014 companies that acted accordingly to what we wanted them to do, that trusted us, will be punished if this proposal goes through.\u2019 Opposed extending free allocation (\u2018We should stick to the plan and phase them out\u2019) and questioned the international-credits provision; argues industry/power-sector emissions should keep falling fast since they are among the easiest sectors to decarbonise. Consistent with, and sharpens, Sweden\u2019s co-signature of the 8 Jul seven-country ambition-coalition statement.",
+      "source": "RT\u00c9 (George Lee, Environment Correspondent), 24 Jul 2026, reporting live from Dublin Castle",
+      "url": "https://www.rte.ie/news/world/2026/0724/1584943-divisions-emerge-as-talks-begin-over-eu-climate-reform/",
+      "date": "2026-07-24",
+      "topics": [
+        "LRF",
+        "FREEALLOC"
+      ],
+      "relevance": 2
+    },
+    {
+      "actor": "Greens/EFA",
+      "actorType": "EP Political Group",
       "role": "Bloss: shadow rapporteur, ENVI",
       "stance": "oppose",
       "critiqueType": "tooWeak",
-      "text": "Michael Bloss: the Commission gives industry “a licence to pollute for even longer and at a lower cost”; weakening the ETS “harms companies that create jobs and growth through climate-friendly production” and “holds back investment.” Sara Matthieu: free allowances are “nothing more than subsidies for the fossil fuel industry.”",
+      "text": "Michael Bloss (shadow rapporteur) and Sara Matthieu gave sharply critical same-day reactions \u2014 the Commission gives industry \u201ca licence to pollute for even longer and at a lower cost,\u201d free allowances are \u201cnothing more than subsidies for the fossil fuel industry.\u201d Terry Reintke is named as a co-signatory on the same release.",
       "source": "Greens/EFA press release",
-      "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
+      "url": "https://www.greens-efa.eu/",
       "date": "2026-07-17",
       "topics": [
         "ETS1",
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 3
+      "relevance": 3,
+      "members": [
+        {
+          "actor": "Michael Bloss",
+          "role": "Greens/EFA, shadow rapporteur, ENVI",
+          "stance": "oppose",
+          "critiqueType": "tooWeak",
+          "text": "The Commission gives industry \u201ca licence to pollute for even longer and at a lower cost\u201d; weakening the ETS \u201charms companies that create jobs and growth through climate-friendly production\u201d and \u201choards back investment.\u201d",
+          "source": "Greens/EFA press release",
+          "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
+          "date": "2026-07-17",
+          "topics": [
+            "ETS1",
+            "LRF",
+            "FREEALLOC"
+          ]
+        },
+        {
+          "actor": "Sara Matthieu",
+          "role": "Greens/EFA, MEP",
+          "stance": "oppose",
+          "critiqueType": "tooWeak",
+          "text": "Free allowances are \u201cnothing more than subsidies for the fossil fuel industry.\u201d",
+          "source": "Greens/EFA press release",
+          "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
+          "date": "2026-07-17",
+          "topics": [
+            "FREEALLOC"
+          ]
+        },
+        {
+          "actor": "Terry Reintke",
+          "role": "Greens/EFA, Co-President",
+          "stance": "oppose",
+          "critiqueType": "tooWeak",
+          "text": "Named as a co-signatory on the Greens/EFA 17 Jul press release alongside Bloss and Matthieu; no individually attributed quote found in that release or since \u2014 stance inferred from the group release, not a separate personal statement.",
+          "source": "Greens/EFA press release",
+          "url": "https://www.greens-efa.eu/en/article/press/european-commission-significantly-weakens-its-best-weapon-against-climate-change",
+          "date": "2026-07-17",
+          "topics": [
+            "ETS1"
+          ]
+        }
+      ]
     },
     {
-      "actor": "Tiemo Wölken",
-      "actorType": "MEP",
-      "role": "S&D group MEP",
-      "stance": "neutral",
-      "text": "Reform must combine climate protection with industrial strength — flexibility and aid should be tied to binding investment and job-preservation commitments, a “conditional, not blanket” framing of free allocation.",
-      "source": "dpa report, republished via news.de",
-      "url": "https://www.news.de/wirtschaft/859829119/wie-geht-es-mit-dem-treibhausgashandelssystem-der-eu-weiter-klimaschutz-news-der-dpa-aktuell-zu-eu-klima-und-industrie/1/",
-      "date": "2026-07-17",
+      "actor": "S&D",
+      "actorType": "EP Political Group",
+      "role": null,
+      "stance": "mixed",
+      "text": "Mixed so far: Wölken and Maran gave neutral, process-oriented reactions on publication day (conditional-not-blanket framing on free allocation; revenue-scale framing). Nicolás González Casares (Spain) published a detailed critical assessment on 21 Jul arguing the proposal doesn't go far enough \u2014 the slower LRF path \u2018risks rewarding those that have delayed investment and penalising pioneering companies\u2019, the international-credits allowance should be reduced, and the 80/20 free-allocation conditionality split is \u2018far too generous\u2019 toward unverified plans.",
+      "source": "Multiple \u2014 see individual members",
+      "url": "https://www.socialistsanddemocrats.eu/",
+      "date": "2026-07-21",
       "topics": [
-        "FREEALLOC"
-      ],
-      "relevance": 4
-    },
-    {
-      "actor": "Pierfrancesco Maran",
-      "actorType": "MEP",
-      "role": "S&D, ENVI Chair",
-      "stance": "neutral",
-      "text": "Official statement: ETS “remains key pillar of EU climate and industrial policy,” citing over €250bn raised since 2013 (~€40bn in 2024 alone) — framing revenue scale as a success without yet commenting on the earmarking-effectiveness question specifically.",
-      "source": "Adnkronos (reporting Maran's official note)",
-      "url": "https://www.adnkronos.com/economia/maran-s-e-d-ets-pilastro-inamovibile-della-politica-climatica-ue_4HGYd80LMqYtcwfR1blgJ4",
-      "date": "2026-07-17",
-      "topics": [
-        "ETS1",
+        "LRF",
+        "FREEALLOC",
         "REVENUE"
       ],
-      "relevance": 5
+      "relevance": 4,
+      "members": [
+        {
+          "actor": "Tiemo Wölken",
+          "role": "S&D group MEP",
+          "stance": "neutral",
+          "text": "Reform must combine climate protection with industrial strength \u2014 flexibility and aid should be tied to binding investment and job-preservation commitments, a \u201cconditional, not blanket\u201d framing of free allocation.",
+          "source": "dpa report, republished via news.de",
+          "url": "https://www.news.de/wirtschaft/859829119/wie-geht-es-mit-dem-treibhausgashandelssystem-der-eu-weiter-klimaschutz-news-der-dpa-aktuell-zu-eu-klima-und-industrie/1/",
+          "date": "2026-07-17",
+          "topics": [
+            "FREEALLOC"
+          ]
+        },
+        {
+          "actor": "Pierfrancesco Maran",
+          "role": "S&D, ENVI Chair",
+          "stance": "neutral",
+          "text": "Official statement: ETS \u201cremains key pillar of EU climate and industrial policy,\u201d citing over \u20ac250bn raised since 2013 (~\u20ac40bn in 2024 alone) \u2014 framing revenue scale as a success without yet commenting on the earmarking-effectiveness question specifically.",
+          "source": "Adnkronos (reporting Maran's official note)",
+          "url": "https://www.adnkronos.com/economia/maran-s-e-d-ets-pilastro-inamovibile-della-politica-climatica-ue_4HGYd80LMqYtcwfR1blgJ4",
+          "date": "2026-07-17",
+          "topics": [
+            "ETS1",
+            "REVENUE"
+          ]
+        },
+        {
+          "actor": "Nicolás González Casares",
+          "role": "S&D, Spain",
+          "stance": "oppose",
+          "critiqueType": "tooWeak",
+          "text": "Backs the Commission's overall direction (electrification and a strengthened carbon market at the centre of industrial strategy) but argues the proposal itself is too soft: warns the slower 2031\u201335 LRF path \u2018risks rewarding those that have delayed investment and penalising pioneering companies\u2019, wants the up-to-2%/260Mt international-credits allowance (2036\u201340) reduced given unresolved additionality/permanence concerns, calls the 80%-plan/20%-delivery free-allocation conditionality split \u2018far too generous\u2019 toward unverified plans, and is skeptical of the proposed 250m BECCS/DACCS removals allowance absent proven, permanent geological storage.",
+          "source": "Nicol\u00e1s Gonz\u00e1lez Casares, LinkedIn (own account, primary)",
+          "url": "https://www.linkedin.com/pulse/ets-review-electrification-action-plan-network-has-gonz%C3%A1lez-casares-dboke/",
+          "date": "2026-07-21",
+          "topics": [
+            "LRF",
+            "FREEALLOC",
+            "REVENUE"
+          ]
+        }
+      ]
     },
     {
       "actor": "Alexandr Vondra",
@@ -1937,21 +2115,35 @@ DOSSIERS = {
         "FREEALLOC",
         "MWI"
       ],
-      "relevance": 6
+      "relevance": 5
     },
     {
-      "actor": "Pascal Canfin",
-      "actorType": "MEP",
-      "role": "Renew, ENVI Coordinator",
+      "actor": "Renew Europe",
+      "actorType": "EP Political Group",
+      "role": "Canfin: ENVI Coordinator",
       "stance": "neutral",
-      "text": "Called the Commission's proposal \u201cbalanced\u201d at a press briefing the day of publication, and said he was confident a compromise could be found between S&D, Renew and the EPP during Parliament negotiations \u2014 a constructive, deal-oriented read rather than an enthusiastic endorsement or a criticism.",
+      "text": "Group reaction channelled through Pascal Canfin so far: called the proposal \u201cbalanced\u201d and expressed confidence a compromise could be found between S&D, Renew and the EPP.",
       "source": "Agence Europe (reporting his 17 Jul press briefing)",
-      "url": "https://agenceurope.eu/fr/bulletin/article/13913/7/la-revision-de-lets-par-la-commission-europeenne-semble-convenir-a-certains-mais-ne-pas-suffire-a-beaucoup-dautres-selon-les-premieres-reactions",
+      "url": "https://www.reneweuropegroup.eu/",
       "date": "2026-07-17",
       "topics": [
         "ETS1"
       ],
-      "relevance": 7
+      "relevance": 6,
+      "members": [
+        {
+          "actor": "Pascal Canfin",
+          "role": "Renew, ENVI Coordinator",
+          "stance": "neutral",
+          "text": "Called the Commission's proposal \u201cbalanced\u201d at a press briefing the day of publication, and said he was confident a compromise could be found between S&D, Renew and the EPP during Parliament negotiations \u2014 a constructive, deal-oriented read rather than an enthusiastic endorsement or a criticism.",
+          "source": "Agence Europe (reporting his 17 Jul press briefing)",
+          "url": "https://agenceurope.eu/fr/bulletin/article/13913/7/la-revision-de-lets-par-la-commission-europeenne-semble-convenir-a-certains-mais-ne-pas-suffire-a-beaucoup-dautres-selon-les-premieres-reactions",
+          "date": "2026-07-17",
+          "topics": [
+            "ETS1"
+          ]
+        }
+      ]
     }
   ],
   "business": [
@@ -2193,8 +2385,8 @@ DOSSIERS = {
   "criticismSummary": {
     "tooFar": [
       "Free-allocation conditionality is still too weak — companies keep what amounts to a de facto subsidy without a binding requirement to actually invest, and ETS revenues aren't being redirected to real decarbonisation/electrification investment (EEB, Öko-Institut, Greens/EFA, CAN Europe, WindEurope).",
-      "The lower LRF and softer MSR (cut intake rate, scrapped invalidation), plus a growing role for carbon removals and international credits, risk a structural allowance oversupply through 2040, undermining the carbon-price signal (EEB, Öko-Institut, CAN Europe, WWF).",
-      "Overall package direction \"rewards polluters\"/\"rewards delay\" and penalises early movers who already invested in decarbonisation, delaying the pressure that drives industrial transformation (EEB, Greens/EFA, CAN Europe, WindEurope, Carbon Market Watch)."
+      "The lower LRF and softer MSR (cut intake rate, scrapped invalidation), plus a growing role for carbon removals and international credits, risk a structural allowance oversupply through 2040, undermining the carbon-price signal (EEB, Öko-Institut, CAN Europe, WWF, S&D via González Casares).",
+      "Overall package direction \"rewards polluters\"/\"rewards delay\" and penalises early movers who already invested in decarbonisation, delaying the pressure that drives industrial transformation (EEB, Greens/EFA, CAN Europe, WindEurope, Carbon Market Watch, S&D via González Casares)."
     ],
     "notFarEnough": [
       "New investment-linked free-allocation conditionality adds administrative burden and legal uncertainty without a genuine business case for the required investment; some also want an even slower LRF and no scope expansion at all (Cefic, EUROFER, Vondra).",
@@ -3198,14 +3390,14 @@ DOSSIERS = {
                 "intensity": 3,
                 "confidence": 3,
                 "source": "document",
-                "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) welcomed the Commission's 3.7%/1.7% LRF path as \"fully compatible\" with the 2040 target and 2050 neutrality — softer than the CDU/CSU's 3.4% ask but same direction; confidence upgraded to reflect his own on-the-record confirmation as rapporteur."
+                "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) welcomed the Commission's 3.7%/1.7% LRF path as \"fully compatible\" with the 2040 target and 2050 neutrality — softer than the CDU/CSU's 3.4% ask but same direction; confidence upgraded to reflect his own on-the-record confirmation as rapporteur. Sharpened in a 24 Jul Contexte interview: wants the 3.7%/2031–35 leg loosened further and the 1.7%/2036+ leg tightened — “a bit too high in the first five years and a bit too low in the second part” — a shape-shift (front-load flexibility, back-load ambition) rather than a simple across-the-board ask; stance/intensity held at support/3 since the underlying direction (lower LRF than status quo) is unchanged."
               },
               "freealloc": {
                 "stance": "support",
                 "intensity": 3,
                 "confidence": 3,
                 "source": "document",
-                "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) backs the conditionality approach in principle, provided \"frontrunners\" who have already invested aren't penalised, and industry isn't allowed to \"sit back and do nothing\" — same direction, more conditional framing than the pre-proposal CDU/CSU ask; confidence upgraded on his own confirmation as rapporteur."
+                "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) backs the conditionality approach in principle, provided \"frontrunners\" who have already invested aren't penalised, and industry isn't allowed to \"sit back and do nothing\" — same direction, more conditional framing than the pre-proposal CDU/CSU ask; confidence upgraded on his own confirmation as rapporteur. Sharpened in the 24 Jul Contexte interview: wants investment conditionality tied to the specific site that received the free allocation, pushing back on the Commission’s proposed company-level/pooled-allowance flexibility — “investment in the site should be rewarded more than investment somewhere else,” though he concedes “some flexibility is necessary.”"
               },
               "speculation": {
                 "stance": "support",
@@ -3227,6 +3419,13 @@ DOSSIERS = {
                 "confidence": 2,
                 "source": "document",
                 "note": "'We need a review of ETS system... can't blame ETS for everything.' Defends ETS while pushing for reform — consistent with his existing FREEALLOC/LRF stances from the CDU/CSU note. Confirmed post-proposal: called the Commission's proposal \"a good day for the climate, for competitiveness and, above all, for jobs\" (Liese/EPP press release, 17 Jul 2026)."
+              },
+              "revenue": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 3,
+                "source": "document",
+                "note": "New position set out in the 24 Jul Contexte interview (primary): wants the Commission\u2019s 50%-to-ETS-sectors revenue-earmarking rule sub-targeted so at least 20\u201330% of that share is reserved specifically for hard-to-abate industries (steel, chemical, cement, lime), arguing broad electrification spending doesn\u2019t help industries needing hydrogen/CCS infrastructure. Says he expects a hard trilogue fight and claims a Parliament-Commission-industry-NGO \u201cunited front\u201d for more targeted spending. Aligned in direction with E.ON\u2019s REVENUE ask (effective earmarking for decarbonisation), though the specific 20\u201330% sub-target is his own idea, not yet a formal amendment."
               }
             },
             "weight": 1,
@@ -9261,7 +9460,7 @@ DOSSIERS = {
             "name": "Sweden",
             "group": "Government position",
             "country": "Sweden",
-            "role": "Position on most topics not yet assessed",
+            "role": "State Secretary Daniel Westl\u00e9n (Ministry of Climate and the Environment) \u2014 active critic of the LRF/free-allocation easing",
             "weight": 10.588,
             "stances": {
               "mwi": {
@@ -9290,14 +9489,14 @@ DOSSIERS = {
                 "intensity": 2,
                 "confidence": 3,
                 "source": "document",
-                "note": "Joint statement by Spain, Denmark, Finland, Luxembourg, Netherlands, Portugal and Sweden to the European Commission ahead of the ETS-1 revision (~8 Jul 2026; text seen by Jonas, corroborated by POLITICO/E&E News, Ben Makuch, 8 Jul 2026, https://www.eenews.net/articles/spain-netherlands-5-other-countries-issue-plea-to-protect-ets/): \u201cany adjustment of the linear reduction factor should be in line with the 2040-target of 90% and from 2036 onwards.\u201d Wants the LRF trajectory kept aligned to the ambitious 90%-by-2040 pathway \u2014 opposes E.ON's ask to lower/slow the LRF pace."
+                "note": "Joint statement by Spain, Denmark, Finland, Luxembourg, Netherlands, Portugal and Sweden to the European Commission ahead of the ETS-1 revision (~8 Jul 2026; text seen by Jonas, corroborated by POLITICO/E&E News, Ben Makuch, 8 Jul 2026, https://www.eenews.net/articles/spain-netherlands-5-other-countries-issue-plea-to-protect-ets/): \u201c any adjustment of the linear reduction factor should be in line with the 2040-target of 90% and from 2036 onwards.\u201d Wants the LRF trajectory kept aligned to the ambitious 90%-by-2040 pathway \u2014 opposes E.ON's ask to lower/slow the LRF pace. Reconfirmed and sharpened in person at the 23-24 Jul Dublin informal Environment Council: State Secretary Daniel Westl\u00e9n told ministers the slower pace \u2018is rewarding those who didn\u2019t do their homework \u2014 companies that acted accordingly to what we wanted them to do, that trusted us, will be punished if this proposal goes through\u2019 (RT\u00c9, George Lee, 24 Jul, reporting live from Dublin Castle)."
               },
               "freealloc": {
                 "stance": "oppose",
-                "intensity": 1,
-                "confidence": 2,
+                "intensity": 2,
+                "confidence": 3,
                 "source": "document",
-                "note": "Same statement: blanket framing that any \u201creduction of ambition\u201d within the ETS is negative, plus the ask that level-playing-field measures be \u201cdirected towards those installations that are investing in decarbonization\u201d \u2014 a conditional framing, not E.ON's blanket slower-phase-out ask. Read (per Jonas, 11 Jul 2026) as a mild deviation from E.ON's freealloc position; logged with low intensity/confidence given the indirect, inferred nature of this specific read."
+                "note": "Same statement: blanket framing that any \u201creduction of ambition\u201d within the ETS is negative, plus the ask that level-playing-field measures be \u201cdirected towards those installations that are investing in decarbonization\u201d \u2014 a conditional framing, not E.ON's blanket slower-phase-out ask. Read (per Jonas, 11 Jul 2026) as a mild deviation from E.ON's freealloc position. Upgraded from an indirect/inferred read to an explicit, on-the-record position at the 23-24 Jul Dublin informal Environment Council: Westl\u00e9n opposed extending free allocation outright \u2014 \u2018We should stick to the plan and phase them out\u2019 \u2014 and questioned the international-credits provision, arguing industry and power-sector emissions should keep falling fast since they are among the easiest sectors to decarbonise (RT\u00c9, George Lee, 24 Jul)."
               }
             }
           },
@@ -10263,7 +10462,7 @@ DOSSIERS = {
       }
     ],
     "overview": {
-      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final (Arts. 9, 9b, 9c, 10a, 10cc, 10d, 12a/b), plus a companion fallback-benchmarks proposal COM(2026) 619 final (2026/0211(COD), ~€4bn added free allocation 2026-2030) — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed via the primary text: LRF cut to 3.7%/yr 2031-2035 and 1.7%/yr from 2036 (Art. 9), reverting to 2.7% if up to 260m Art. 6 international credits prove unavailable (Art. 9b); a further 250m allowances earmarked 2031-2040 to purchase domestic BECCS/DACCS removals (Art. 9c); free allocation and CBAM-sector protection extended to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (80% upfront, 20% on demonstrated reductions, Art. 10a), lowest 10% of emitters exempt; MSR automatic-invalidation ended (folds in 2026/0085(COD)); Investment Booster 400m EUAs (~€30bn) to 2030 via the new Industrial Decarbonisation Bank (Art. 10cc); Modernisation Fund continued 2031-2040 at a reduced 2% cap-share plus a new 0.5% IDB-linked stream (Art. 10d). Notably, Art. 29a (price containment) is left entirely untouched — a real gap against E.ON's ask. Council remains split: a 10-country bloc led by Italy wants further loosening; 7 countries (NL, DK, ES, FI, PT, LU, SE) defend ambition; DE/FR broker. Per EP rapporteur Liese, Council/Parliament must set positions by end-2026 for a January 2027 trilogue start. Highest-stakes EU energy file in motion for E.ON's cost base and 2030s investment case; E.ON's own first assessment (position paper vs. filed text) shows majority alignment on LRF/MSR/BECCS/threshold/trading, mixed-to-negative on Art. 29a, CBAM export protection, and revenue earmarking effectiveness.",
+      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final (Arts. 9, 9b, 9c, 10a, 10cc, 10d, 12a/b), plus a companion fallback-benchmarks proposal COM(2026) 619 final (2026/0211(COD), ~€4bn added free allocation 2026-2030) — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed via the primary text: LRF cut to 3.7%/yr 2031-2035 and 1.7%/yr from 2036 (Art. 9), reverting to 2.7% if up to 260m Art. 6 international credits prove unavailable (Art. 9b); a further 250m allowances earmarked 2031-2040 to purchase domestic BECCS/DACCS removals (Art. 9c); free allocation and CBAM-sector protection extended to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (80% upfront, 20% on demonstrated reductions, Art. 10a), lowest 10% of emitters exempt; MSR automatic-invalidation ended (folds in 2026/0085(COD)); Investment Booster 400m EUAs (~€30bn) to 2030 via the new Industrial Decarbonisation Bank (Art. 10cc); Modernisation Fund continued 2031-2040 at a reduced 2% cap-share plus a new 0.5% IDB-linked stream (Art. 10d). Notably, Art. 29a (price containment) is left entirely untouched — a real gap against E.ON's ask. Council remains split: a 10-country bloc led by Italy wants further loosening; 7 countries (NL, DK, ES, FI, PT, LU, SE) defend ambition; DE/FR broker. Per EP rapporteur Liese, Council/Parliament must set positions by end-2026 for a January 2027 trilogue start. Liese\u2019s own account of his majority-building strategy (Contexte, 24 Jul, primary): he rules out any EPP-ECR-PfE-ESN (\u2018Venezuelan\u2019) majority as both personally opposed and unworkable (neither Rassemblement National nor PiS would back an ETS file), but also judges the S&D/Renew/EPP \u2018Platform\u2019 alone not stable enough \u2014 his actual target is Platform plus select ECR members plus the Greens and possibly The Left, explicitly because dropping ECR would cost Belgium and Italy in Council. Refines rather than replaces the standing EPP\u2013S&D\u2013Renew\u2013Greens/EFA base-deal framing (\u00a79.4) with a sharper, on-the-record picture of the real coalition math. Highest-stakes EU energy file in motion for E.ON's cost base and 2030s investment case; E.ON's own first assessment (position paper vs. filed text) shows majority alignment on LRF/MSR/BECCS/threshold/trading, mixed-to-negative on Art. 29a, CBAM export protection, and revenue earmarking effectiveness.",
       "milestones": [
         {
           "date": "2026-07-17",
@@ -10302,12 +10501,12 @@ DOSSIERS = {
           "occurred": false
         },
         {
-          "date": "2026-07-01",
-          "title": "Irish Presidency of the Council takes over from Cyprus",
-          "status": "Confirmed",
-          "note": "Relevant for tracking which Council configuration/presidency will steer ETS1 negotiations in H2 2026. Next full Environment Council session date not yet confirmed.",
-          "url": "https://www.consilium.europa.eu/en/meetings/env/2026/06/25/",
-          "institution": "council",
+          "date": "2026-09 (as early as, forecast)",
+          "title": "Liese draft ETS1 rapporteur report",
+          "status": "Rapporteur\u2019s own stated intention (Contexte interview, 24 Jul 2026, primary)",
+          "note": "Peter Liese told Contexte he intends to finalise his draft report \u201cas early as September\u201d \u2014 not yet a confirmed committee-calendar date, but the clearest signal so far of when Parliament\u2019s own text might land.",
+          "url": null,
+          "institution": "ep",
           "occurred": false
         },
         {
@@ -10331,11 +10530,11 @@ DOSSIERS = {
         {
           "date": "2026-07-23/24",
           "title": "Informal Environment Council, Dublin",
-          "status": "Confirmed",
-          "note": "Two-day informal meeting (23-24 Jul), chaired by Irish Minister Darragh O'Brien — first ministerial-level exchange of views on the Commission's ETS1 proposal. Informal format, no decisions taken.",
-          "url": "https://irish-presidency.consilium.europa.eu/en/events/informal-meeting-of-environment-ministers-envi/",
+          "status": "Occurred — RTÉ (George Lee), 24 Jul 2026, reporting live from Dublin Castle",
+          "note": "Two-day informal meeting (23-24 Jul), chaired by Irish Minister Darragh O'Brien — first substantive ministerial exchange on the Commission's ETS1 proposal; informal format, no decisions taken. Sweden (Westlén) pushed back sharply on the LRF/free-allocation easing; Commissioner Roswall defended the package. O'Brien's stated target: agreement by the December Environment Council.",
+          "url": "https://www.rte.ie/news/world/2026/0724/1584943-divisions-emerge-as-talks-begin-over-eu-climate-reform/",
           "institution": "council",
-          "occurred": false
+          "occurred": true
         },
         {
           "date": "2026-10-12",
@@ -10476,17 +10675,17 @@ DOSSIERS = {
       "headlineOfDay": [
         {
           "date": "2026-07-24",
-          "headline": "Dublin Council\u2019s ETS working session runs today with no outcome yet as EUAs settle down to \u20ac83.88 (23 Jul revised); WWF and Carbon Market Watch join the reaction tracker, rounding out the full NGO/think-tank spectrum",
-          "summary": "The Dublin informal Environment Council\u2019s substantive ETS session (\u201cDecarbonisation and Competitiveness\u201d, 09:30\u201311:30 Irish time) and press conference (15:30) fall later today \u2014 per the Irish Presidency\u2019s own published agenda, no ministerial outcome exists yet at the time of this morning check; still flagged occurred:false pending an afternoon/next-morning follow-up. On price, Trading Economics\u2019 24 Jul read (Actual 84.26 / Previous 83.88) confirms 23 Jul\u2019s settle at \u20ac83.88, a downward correction from the \u20ac85.84 same-day provisional logged yesterday \u2014 the first downward correction in this recurring intraday-vs-settle pattern since it was first documented on 15 Jul. 24 Jul itself logged provisional at \u20ac84.26, still up roughly 6.5% since the pre-proposal 17 Jul low. On the reaction tracker, two new primary-sourced NGO entries were added: WWF European Policy Office\u2019s own 17 Jul release (Camille Maury\u2019s \u201cJenga tower\u201d framing, flagging the LRF cut\u2019s ~2bn-tonne extra-emissions math and the BECCS/DACCS offset provision) and Carbon Market Watch\u2019s own 17 Jul post (\u201cgifted a fossil fuel lifeline and more free passes to pollute\u201d) \u2014 both closing long-standing gaps in the NGO/think-tank column, which now covers EEB, E3G, \u00d6ko-Institut, CAN Europe, WWF and Carbon Market Watch.",
-          "impactNote": "WWF and Carbon Market Watch's additions complete E.ON's visibility into the full spectrum of Brussels climate-NGO reaction \u2014 useful for stress-testing E.ON's own messaging, since both organisations' \u201crewards polluters/delay\u201d framing is likely to recur in ENVI committee debate once substantive work resumes in September. No Council outcome yet from Dublin \u2014 the ETS-specific working session is still hours away as of this morning's check; a same-day or next-morning supplementary check is warranted once ministers have actually spoken.",
-          "sourceLabel": "Irish Presidency (Dublin informal Environment Council agenda); Trading Economics; WWF, Carbon Market Watch (own sites)",
-          "sourceUrl": "https://irish-presidency.consilium.europa.eu/en/events/informal-meeting-of-environment-and-climate-ministers-envi/"
+          "headline": "Dublin ministerial talks expose real fault lines as Sweden clashes with Germany and Poland over the ETS1 easing; EUAs settle down to \u20ac83.88 (23 Jul revised)",
+          "summary": "The Dublin informal Environment Council\u2019s ETS session produced the first real ministerial clash on the file: State Secretary Daniel Westl\u00e9n (Sweden) told fellow ministers the Commission\u2019s slower reform pace \u201cis rewarding those who didn\u2019t do their homework\u201d and would punish companies that already invested in good faith, opposing the free-allocation extension outright (\u201cWe should stick to the plan and phase them out\u201d) \u2014 a sharp, on-the-record escalation of Sweden\u2019s earlier ambition-coalition signature (8 Jul joint statement). Commissioner Jessika Roswall defended the package, rejecting suggestions it retreats from climate ambition (\u201cInvesting in nature, climate adaptation and competitiveness are not a contradiction\u201d). Irish Presidency chair Darragh O\u2019Brien set a concrete target: agreement by the December Environment Council. On price, Trading Economics\u2019 24 Jul read (Actual 84.26 / Previous 83.88) confirms 23 Jul\u2019s settle at \u20ac83.88, a downward correction from the \u20ac85.84 same-day provisional logged yesterday \u2014 still up roughly 6.5% since the pre-proposal 17 Jul low. Separately, WWF and Carbon Market Watch added sharply critical NGO reactions, calling the LRF cut a \u201cJenga tower\u201d and a \u201cfossil fuel lifeline\u201d.",
+          "impactNote": "This is the first genuine Council-level airing of the ambition-coalition/industry-friendly-easing divide with named ministers on the record \u2014 useful for gauging how firm the 7-country bloc's opposition to the LRF/free-allocation easing actually is once ministers speak in person, not just via joint statements. Worth watching whether Sweden's sharper tone (vs. Germany's continued support) hardens into a blocking minority ahead of the December target O'Brien named. WWF/Carbon Market Watch's \u201crewards polluters/delay\u201d framing is likely to recur in ENVI debate once substantive work resumes in September.",
+          "sourceLabel": "RT\u00c9 (George Lee, Dublin Castle, 24 Jul, live ministerial reporting); Trading Economics; WWF, Carbon Market Watch (own sites)",
+          "sourceUrl": "https://www.rte.ie/news/world/2026/0724/1584943-divisions-emerge-as-talks-begin-over-eu-climate-reform/"
         },
         {
           "date": "2026-07-23",
-          "headline": "Dublin informal Environment Council opens for ministers\u2019 first exchange on the ETS1 proposal as EUAs hit a fresh 2026 high; BusinessEurope, Fertilizers Europe and Cement Europe reactions surface, closing a long-standing sourcing gap",
-          "summary": "The Irish Presidency\u2019s two-day informal Environment Council opened in Dublin today (23-24 Jul), chaired by Minister Darragh O\u2019Brien \u2014 the first ministerial-level exchange of views on COM(2026) 616/619 since publication, following the Council\u2019s technical-level Working Party discussions on 20 and 22 Jul. No outcome yet; informal format, no decisions taken (worth a same-day/next-day follow-up once ministers speak). Separately, Trading Economics\u2019 23 Jul read showed EUAs at \u20ac85.84 intraday, down slightly from a confirmed \u20ac86.63 settle on 22 Jul (revised up from a same-day \u20ac83.23 provisional read \u2014 a larger-than-usual \u20ac3.40 intraday-vs-settle gap) \u2014 prices are now up roughly 8.5% since the pre-proposal 17 Jul low. On the reaction-tracker side, three genuine primary-sourced post-proposal reactions were found and added, closing gaps flagged since 21 Jul: BusinessEurope\u2019s own 17 Jul press release (previously only known via a secondary IBTimes UK quote) gives a measured, wait-and-see reaction \u2014 welcomes the Commission\u2019s recognition of the need to reform, but flags free-allocation conditionality bureaucracy and international-credit uncertainty. Fertilizers Europe\u2019s own 17 Jul release is squarely critical, arguing the review \u201cfails to address fertilizer sector realities, risks shifting carbon costs to European farmers.\u201d Cement Europe (formerly Cembureau) gave a genuinely mixed 17 Jul reaction \u2014 welcomes the LRF/carbon-removals liquidity approach, ETS-revenue mobilisation toward the Industrial Decarbonisation Bank and Carbon Contracts for Difference, but explicitly does not support the proposal\u2019s slower CBAM free-allocation phase-out and flags MWI-provision complexity.",
-          "impactNote": "Cement Europe\u2019s explicit opposition to a slower CBAM free-allocation phase-out is a genuinely useful, counter-intuitive data point for Jonas: a major energy-intensive trade association is on the opposite side of E.ON\u2019s own FREEALLOC ask, wanting a faster (not slower) phase-out in exchange for a watertight CBAM \u2014 worth factoring into E.ON\u2019s coalition-building on this specific topic. BusinessEurope\u2019s and Fertilizers Europe\u2019s reactions round out the industry side of the reaction tracker with genuinely primary sources, resolving sourcing gaps carried since \u00a7\u00a761/63/72/73. Reaction tracker now stands at 19 entries (institutional 7, business 8, ngoThinkTank 4). Nothing new yet from the Dublin Council \u2014 flag for a same-day or next-morning follow-up once ministers have actually spoken.",
+          "headline": "Dublin informal Environment Council opens for ministers\u2019 first exchange on the ETS1 proposal as EUAs hit a fresh 2026 high; BusinessEurope, Fertilizers Europe and Cement Europe give contrasting industry reactions, with Cement Europe breaking ranks to back a faster CBAM phase-out",
+          "summary": "The Irish Presidency\u2019s two-day informal Environment Council opened in Dublin today (23-24 Jul), chaired by Minister Darragh O\u2019Brien \u2014 the first ministerial-level exchange of views on COM(2026) 616/619 since publication, following the Council\u2019s technical-level Working Party discussions on 20 and 22 Jul. No outcome yet; informal format, no decisions taken (worth a same-day/next-day follow-up once ministers speak). Separately, Trading Economics\u2019 23 Jul read showed EUAs at \u20ac85.84 intraday, down slightly from a confirmed \u20ac86.63 settle on 22 Jul (revised up from a same-day \u20ac83.23 provisional read \u2014 a larger-than-usual \u20ac3.40 intraday-vs-settle gap) \u2014 prices are now up roughly 8.5% since the pre-proposal 17 Jul low. On the industry-reaction side, BusinessEurope\u2019s own 17 Jul press release (upgrading a previously secondary-sourced IBTimes UK quote) gives a measured, wait-and-see reaction \u2014 welcomes the Commission\u2019s recognition of the need to reform, but flags free-allocation conditionality bureaucracy and international-credit uncertainty. Fertilizers Europe\u2019s own 17 Jul release is squarely critical, arguing the review \u201cfails to address fertilizer sector realities, risks shifting carbon costs to European farmers.\u201d Cement Europe (formerly Cembureau) gave a genuinely mixed 17 Jul reaction \u2014 welcomes the LRF/carbon-removals liquidity approach, ETS-revenue mobilisation toward the Industrial Decarbonisation Bank and Carbon Contracts for Difference, but explicitly does not support the proposal\u2019s slower CBAM free-allocation phase-out and flags MWI-provision complexity.",
+          "impactNote": "Cement Europe\u2019s explicit opposition to a slower CBAM free-allocation phase-out is a genuinely useful, counter-intuitive data point for Jonas: a major energy-intensive trade association is on the opposite side of E.ON\u2019s own FREEALLOC ask, wanting a faster (not slower) phase-out in exchange for a watertight CBAM \u2014 worth factoring into E.ON\u2019s coalition-building on this specific topic. Nothing new yet from the Dublin Council \u2014 flag for a same-day or next-morning follow-up once ministers have actually spoken.",
           "sourceLabel": "Irish Presidency (Dublin informal Environment Council); Trading Economics; BusinessEurope, Fertilizers Europe, Cement Europe (own sites)",
           "sourceUrl": "https://irish-presidency.consilium.europa.eu/en/events/informal-meeting-of-environment-ministers-envi/"
         },
@@ -10494,7 +10693,7 @@ DOSSIERS = {
           "date": "2026-07-22",
           "headline": "Council starts technical work on the ETS review (WPE, 20+22 Jul) as EUAs settle at a fresh 2026 high (\u20ac83.20\u2192\u20ac83.23); Vondra (ECR) and Canfin (Renew) stake out contrasting first reads",
           "summary": "The Irish Presidency convened the Council's Working Party on the Environment on Mon 20 Jul and Wed 22 Jul specifically to have the Commission present COM(2026) 616/619 and the accompanying MRV-alignment regulation for first discussion among Member State delegations (Council doc CM 3713/26, primary) \u2014 the first substantive Council-level engagement with the filed texts, ahead of the 23-24 Jul Dublin informal Environment Council's first ministerial exchange. No Presidency compromise text yet, presentation-and-discussion format only. Separately, Trading Economics confirmed 21 Jul's settle at \u20ac83.20 (revising down from a same-day \u20ac83.80 provisional read, the same intraday-vs-settle pattern seen repeatedly since 15 Jul) and 22 Jul ticking to a fresh \u20ac83.23 \u2014 EUAs are now up roughly 5.2% since the pre-proposal 17 Jul low. New primary-adjacent reactions surfaced via Agence Europe's 20 Jul first-reactions roundup (reporting genuine 17 Jul, post-proposal statements): Alexandr Vondra (ECR, ENVI Coordinator, previously only lightly tracked) wants ETS1/ETS2 suspended-or-reformed, more free allocation, a minimum LRF, and opposes extending scope to waste incineration, maritime and aviation on cost grounds; Pascal Canfin (Renew Coordinator, ENVI) called the proposal \u201cbalanced\u201d and said he's confident EPP/S&D/Renew can find a compromise in Parliament.",
-          "impactNote": "Vondra's free-allocation/LRF asks track E.ON's own position closely, but his opposition to MWI scope expansion cuts directly against E.ON's MWI ask \u2014 both now reflected in his stance data for the first time. Canfin's \u201cbalanced\u201d framing and stated confidence in an EPP-S&D-Renew majority is a reassuring signal for deal viability, since that coalition's asks (conditional free allocation, investment-linked flexibility) sit reasonably close to E.ON's own asks. Worth flagging to Jonas: Council technical work has now formally begun \u2014 watch for the first Presidency non-paper to emerge from the WPE round or from Dublin.",
+          "impactNote": "Vondra's free-allocation/LRF asks track E.ON's own position closely, but his opposition to MWI scope expansion cuts directly against E.ON's MWI ask \u2014 a first for his tracked position. Canfin's \u201cbalanced\u201d framing and stated confidence in an EPP-S&D-Renew majority is a reassuring signal for deal viability, since that coalition's asks (conditional free allocation, investment-linked flexibility) sit reasonably close to E.ON's own asks. Worth flagging to Jonas: Council technical work has now formally begun \u2014 watch for the first Presidency non-paper to emerge from the WPE round or from Dublin.",
           "sourceLabel": "Council Working Party on the Environment, doc CM 3713/26 (primary); Agence Europe, 20 Jul 2026 (reporting 17 Jul reactions); Trading Economics",
           "sourceUrl": "https://data.consilium.europa.eu/doc/document/CM-3713-2026-INIT/en/pdf"
         },
@@ -10502,7 +10701,7 @@ DOSSIERS = {
           "date": "2026-07-21",
           "headline": "EUAs grind to fresh 2026 highs (\u20ac83.80) as market digests the ETS1 package; Schneider (BMUKN) and Liese both give primary-source confirmation of already-tracked stances",
           "summary": "EU carbon prices extended their post-proposal rally: Trading Economics' settle for 20 July confirmed at \u20ac83.27 (up from \u20ac79.11 on 17 Jul, roughly +5.3% in three trading sessions), with an intraday read of \u20ac83.80 on 21 Jul (provisional, pending tomorrow's settle) \u2014 a 23-week high. Carbon Pulse's Monday midday note had flagged the package as \u2018largely priced in\u2019 immediately after publication, but the continued grind higher into this week suggests the market is reading the reform as more price-supportive than first assumed. Separately, two already-tracked stances received primary-source upgrades: Bundesumweltminister Carsten Schneider's own BMUKN press release (18 Jul, Nr. 095/26) gave full backing to the Commission's proposal \u2014 calling the ETS \u2018the heart of European climate policy and the most important market-based driver of investment\u2019 \u2014 explicitly welcoming the Investment Booster and the fallback-benchmark flexibilities for chemicals/steel/basic materials, and stressing that companies which have already invested must not be penalised. Peter Liese's own 17 July press release (previously sourced only via a 15 Jul Carbon Pulse leak) now confirms in his own words that he \u2018will also serve as rapporteur\u2019 on the file and will \u2018begin work immediately\u2019, reconfirming the end-2026 Council/Parliament positions and January 2027 trilogue timeline.",
-          "impactNote": "No polarity changes \u2014 both updates reinforce stances already logged (Germany/Schneider ETS1GENERAL=support; Liese as EP rapporteur) but move sourcing from secondary/leak to primary, so confidence has been upgraded accordingly in the tracker. The sustained price strength above \u20ac80 despite the reform's industry-friendly easing is worth flagging to Jonas: it somewhat undercuts the argument that the reform alone solves industry cost pressure, and keeps the investment-signal case behind E.ON's LRF/MSR asks intact even after the free-allocation extension.",
+          "impactNote": "No polarity changes \u2014 both updates reinforce stances already logged (Germany/Schneider ETS1GENERAL=support; Liese as EP rapporteur) but move sourcing from secondary/leak to primary. The sustained price strength above \u20ac80 despite the reform's industry-friendly easing is worth flagging to Jonas: it somewhat undercuts the argument that the reform alone solves industry cost pressure, and keeps the investment-signal case behind E.ON's LRF/MSR asks intact even after the free-allocation extension.",
           "sourceLabel": "Trading Economics; Carbon Pulse (Euro Markets, 20 Jul); BMUKN Pressemitteilung Nr. 095/26 (18 Jul); Peter Liese official press release (17 Jul)",
           "sourceUrl": "https://tradingeconomics.com/commodity/carbon"
         },
@@ -10510,7 +10709,7 @@ DOSSIERS = {
           "date": "2026-07-20",
           "headline": "Weekend fallout: Council splits 10-7 over the published ETS1 text; Bloss accuses Commission of a \u2018licence to pollute\u2019, Hoekstra calls the figures \u2018completely climate-law proof\u2019",
           "summary": "Over the weekend, reaction to Friday's formally-tabled COM(2026) 616 final hardened along the already-tracked Council fault line: the Italy-led 10-country bloc (Poland, Czechia, Romania, Slovakia, Hungary, Bulgaria, Cyprus, Estonia, Austria, Greece) welcomed the direction but still wants more (Poland's climate minister Hennig-Kloska called it \u201ca huge success... although we will fight for more\u201d), while Italy and Czechia said they'll still oppose the new investment-linked conditions on free allocation specifically. The 7-country ambition coalition (Netherlands, Denmark, Spain, Finland, Portugal, Luxembourg, Sweden) reiterated its 7 Jul warning against watering down the system. Michael Bloss (Greens/EFA, already tracked) sharpened his opposition, accusing the Commission of handing industry \u201ca licence to pollute for even longer and at a lower cost\u201d and arguing it penalises early movers \u2014 consistent with the Glueck-lesson framing already applied to his FREEALLOC=oppose tag. Commissioner Hoekstra publicly defended the package, rejecting claims it undermines EU climate law as \u201ccompletely climate-law proof\u201d and arguing the investment conditions are designed to keep production in Europe rather than see it move abroad. WWF calculated the slower LRF path would allow roughly 2 billion additional tonnes of CO2 to be emitted versus the current trajectory. BusinessEurope (Markus Beyrer, not a tracked entity) said industry still isn't satisfied \u2014 new conditionality adds \u201cbureaucratic complexity\u201d and the international-credits provision remains \u201cunsatisfactory\u201d. EUAs eased roughly 2.7% over the past month per Trading Economics, consistent with the market having largely priced in a loosening ahead of publication.",
-          "impactNote": "No new tracked-topic stances change here \u2014 this is reaction/colour confirming positions already logged (Bloss's ETS1GENERAL=support/FREEALLOC=oppose, the 10-vs-7 Council split, Hoekstra/DG CLIMA's ETS1GENERAL=support). The main analytical takeaway for Jonas: both flanks (10-country bloc and industry via BusinessEurope) are simultaneously unsatisfied with the same text from opposite directions \u2014 a classic sign the Commission found a genuine political midpoint, which historically holds up reasonably well through trilogue. Worth watching whether Italy/Czechia's specific conditionality objection hardens into a blocking position once Council starts formal work in the autumn.",
+          "impactNote": "No new stance shifts here \u2014 this is reaction/colour confirming positions already known (Bloss's continued FREEALLOC opposition, the 10-vs-7 Council split, Hoekstra/DG CLIMA's continued backing). The main analytical takeaway for Jonas: both flanks (10-country bloc and industry via BusinessEurope) are simultaneously unsatisfied with the same text from opposite directions \u2014 a classic sign the Commission found a genuine political midpoint, which historically holds up reasonably well through trilogue. Worth watching whether Italy/Czechia's specific conditionality objection hardens into a blocking position once Council starts formal work in the autumn.",
           "sourceLabel": "IBTimes UK (Bernadette B. Tixon, 19 Jul); Commission press remarks",
           "sourceUrl": "https://www.ibtimes.co.uk/ten-eu-states-push-weaker-carbon-rules-seven-others-warn-against-watering-down-ets-1809402"
         }
