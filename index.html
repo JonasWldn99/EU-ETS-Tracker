@@ -1782,10 +1782,12 @@ function reactionGroupCard2HTML(r, groupKey) {
 
 function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel) {
   const DEFAULT_SHOWN = 5;
+  // Sort by stakeholder tier (1 = highest priority) per the E.ON stakeholder-relevance
+  // hierarchy (eu_ets_memory.md \u00a787): Tier 1 > Tier 2 > Tier 3. Untiered entries sort last.
   const sorted = (list || []).slice().sort((a, b) => {
-    const ra = a.relevance == null ? 999 : a.relevance;
-    const rb = b.relevance == null ? 999 : b.relevance;
-    if (ra !== rb) return ra - rb;
+    const ta = a.tier == null ? 99 : a.tier;
+    const tb = b.tier == null ? 99 : b.tier;
+    if (ta !== tb) return ta - tb;
     return (b.date || '').localeCompare(a.date || '');
   });
   const expandKey = `reactionfeed-${groupKey}`;
@@ -1930,7 +1932,7 @@ DOSSIERS = {
         "FREEALLOC",
         "REVENUE"
       ],
-      "relevance": 1,
+      "tier": 1,
       "members": [
         {
           "actor": "Peter Liese",
@@ -1963,7 +1965,7 @@ DOSSIERS = {
         "FREEALLOC",
         "IDB"
       ],
-      "relevance": 2
+      "tier": 1
     },
     {
       "actor": "Sweden (Westl\u00e9n)",
@@ -1979,7 +1981,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 2
+      "tier": 1
     },
     {
       "actor": "Greens/EFA",
@@ -1996,7 +1998,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 3,
+      "tier": 2,
       "members": [
         {
           "actor": "Michael Bloss",
@@ -2055,7 +2057,7 @@ DOSSIERS = {
         "FREEALLOC",
         "REVENUE"
       ],
-      "relevance": 4,
+      "tier": 1,
       "members": [
         {
           "actor": "Tiemo Wölken",
@@ -2115,7 +2117,7 @@ DOSSIERS = {
         "FREEALLOC",
         "MWI"
       ],
-      "relevance": 5
+      "tier": 2
     },
     {
       "actor": "Renew Europe",
@@ -2129,7 +2131,7 @@ DOSSIERS = {
       "topics": [
         "ETS1"
       ],
-      "relevance": 6,
+      "tier": 1,
       "members": [
         {
           "actor": "Pascal Canfin",
@@ -2161,7 +2163,7 @@ DOSSIERS = {
         "MSR",
         "BECCS"
       ],
-      "relevance": 1
+      "tier": 2
     },
     {
       "actor": "Cefic",
@@ -2178,7 +2180,7 @@ DOSSIERS = {
         "FREEALLOC",
         "BECCS"
       ],
-      "relevance": 2
+      "tier": 1
     },
     {
       "actor": "EUROFER",
@@ -2195,7 +2197,7 @@ DOSSIERS = {
         "FREEALLOC",
         "CBAMEXPORT"
       ],
-      "relevance": 3
+      "tier": 1
     },
     {
       "actor": "WindEurope",
@@ -2214,7 +2216,7 @@ DOSSIERS = {
         "REVENUE",
         "IDB"
       ],
-      "relevance": 4
+      "tier": 2
     },
     {
       "actor": "nucleareurope",
@@ -2229,7 +2231,7 @@ DOSSIERS = {
         "ETS1",
         "REVENUE"
       ],
-      "relevance": 5
+      "tier": 3
     },
     {
       "actor": "BusinessEurope",
@@ -2245,7 +2247,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 6
+      "tier": 1
     },
     {
       "actor": "Fertilizers Europe",
@@ -2261,7 +2263,7 @@ DOSSIERS = {
         "FREEALLOC",
         "CBAMEXPORT"
       ],
-      "relevance": 7
+      "tier": 2
     },
     {
       "actor": "Cement Europe (formerly Cembureau)",
@@ -2279,7 +2281,7 @@ DOSSIERS = {
         "MWI",
         "IDB"
       ],
-      "relevance": 8
+      "tier": 2
     }
   ],
   "ngoThinkTank": [
@@ -2298,7 +2300,7 @@ DOSSIERS = {
         "MSR",
         "FREEALLOC"
       ],
-      "relevance": 1
+      "tier": 2
     },
     {
       "actor": "E3G",
@@ -2314,7 +2316,7 @@ DOSSIERS = {
         "REVENUE",
         "IDB"
       ],
-      "relevance": 2
+      "tier": 2
     },
     {
       "actor": "Öko-Institut",
@@ -2330,7 +2332,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 3
+      "tier": 2
     },
     {
       "actor": "CAN Europe",
@@ -2347,7 +2349,7 @@ DOSSIERS = {
         "FREEALLOC",
         "MSR"
       ],
-      "relevance": 4
+      "tier": 3
     },
     {
       "actor": "WWF European Policy Office",
@@ -2363,7 +2365,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 5
+      "tier": 2
     },
     {
       "actor": "Carbon Market Watch",
@@ -2379,7 +2381,7 @@ DOSSIERS = {
         "LRF",
         "FREEALLOC"
       ],
-      "relevance": 6
+      "tier": 2
     }
   ],
   "criticismSummary": {
