@@ -49,6 +49,25 @@
   .topic-key-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); line-height: 2; }
   .topic-key-panel .code { color: var(--text-primary); font-weight: 500; }
 
+  .board-briefing-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 26px 30px; max-width: 780px; }
+  .board-briefing-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .board-briefing-copy-btn { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; background: var(--surface-raised); border: 1px solid var(--border); color: var(--text-primary); padding: 7px 14px; border-radius: 7px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .board-briefing-copy-btn:hover { border-color: var(--text-tertiary); }
+  .board-briefing-copy-btn.copied { color: var(--support); border-color: var(--support); }
+  .board-briefing-title { font-family: var(--font-display); font-size: 19px; margin-bottom: 3px; }
+  .board-briefing-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-bottom: 20px; }
+  .board-briefing-section { margin-bottom: 20px; }
+  .board-briefing-section:last-child { margin-bottom: 0; }
+  .board-briefing-section-title { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 9px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .board-briefing-list { list-style: none; }
+  .board-briefing-list > li { position: relative; padding-left: 16px; margin-bottom: 8px; font-size: 13.5px; line-height: 1.55; color: var(--text-primary); }
+  .board-briefing-list > li::before { content: "\2014"; position: absolute; left: 0; top: 0; color: var(--text-tertiary); font-size: 12px; }
+  .board-briefing-list > li:last-child { margin-bottom: 0; }
+  .board-briefing-sublist { list-style: none; margin-top: 7px; padding-left: 18px; }
+  .board-briefing-sublist > li { position: relative; padding-left: 14px; margin-bottom: 7px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+  .board-briefing-sublist > li::before { content: "\00b7"; position: absolute; left: 0; top: 0; color: var(--text-tertiary); }
+  .board-briefing-sublist > li:last-child { margin-bottom: 0; }
+
   .institution-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   @media (max-width: 1100px) { .institution-grid { grid-template-columns: 1fr !important; } }
   .institution-panel-sub { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-tertiary); line-height: 1.5; padding: 10px 14px 14px; }
@@ -462,6 +481,12 @@
         <button data-view="legislative">Legislative Tracker</button>
       </div>
     </div>
+    <div class="view-cluster">
+      <span class="view-cluster-label">Internal Materials</span>
+      <div class="view-cluster-buttons">
+        <button data-view="boardBriefing">Internal Briefing</button>
+      </div>
+    </div>
   </div>
 
   <select id="topicSelect" class="hidden"></select>
@@ -482,6 +507,7 @@
 <div id="institutionView" class="hidden"></div>
 <div id="topicView" class="hidden"></div>
 <div id="legislativeView" class="hidden"></div>
+<div id="boardBriefingView" class="hidden"></div>
 
 <footer id="footer"></footer>
 
@@ -1566,13 +1592,115 @@ function setActiveView(view) {
   document.getElementById('institutionView').classList.toggle('hidden', view !== 'institution');
   document.getElementById('topicView').classList.toggle('hidden', view !== 'topic');
   document.getElementById('legislativeView').classList.toggle('hidden', view !== 'legislative');
+  document.getElementById('boardBriefingView').classList.toggle('hidden', view !== 'boardBriefing');
   topicSelect.classList.toggle('hidden', view !== 'topic');
   const stakeholderLegend = document.getElementById('stakeholderLegend');
-  if (stakeholderLegend) stakeholderLegend.classList.toggle('hidden', view === 'legislative');
+  if (stakeholderLegend) stakeholderLegend.classList.toggle('hidden', view === 'legislative' || view === 'boardBriefing');
   if (view === 'overview') renderOverviewView();
   if (view === 'institution') renderInstitutionView();
   if (view === 'topic') renderTopicView(topicSelect.value);
   if (view === 'legislative') renderLegislativeView();
+  if (view === 'boardBriefing') renderBoardBriefingView();
+}
+
+let boardBriefingLength = 'short';
+
+function setBoardBriefingLength(len) {
+  if (boardBriefingLength === len) return;
+  boardBriefingLength = len;
+  renderBoardBriefingView();
+}
+
+function boardBriefingBulletsHTML(items) {
+  return `<ul class="board-briefing-list">${(items || []).map(item => {
+    if (typeof item === 'string') return `<li>${item}</li>`;
+    const subHTML = (item.subBullets && item.subBullets.length)
+      ? `<ul class="board-briefing-sublist">${item.subBullets.map(s => `<li>${s}</li>`).join('')}</ul>`
+      : '';
+    return `<li>${item.text}${subHTML}</li>`;
+  }).join('')}</ul>`;
+}
+
+function boardBriefingPlainText(bb, length) {
+  const v = bb[length] || {};
+  const sectionLabels = { background: 'BACKGROUND', currentState: 'CURRENT POLITICAL STATE OF PLAY', keyMessages: 'KEY MESSAGES FOR E.ON', nextSteps: 'NEXT STEPS' };
+  const strip = s => (s || '').replace(/<[^>]+>/g, '');
+  let out = `EU ETS REVIEW \u2014 INTERNAL BRIEFING${length === 'short' ? ' (SHORT)' : ''}\n${bb.lastUpdated || ''}\n\n`;
+  ['background', 'currentState', 'keyMessages', 'nextSteps'].forEach(key => {
+    out += `${sectionLabels[key]}\n`;
+    (v[key] || []).forEach(item => {
+      if (typeof item === 'string') {
+        out += `- ${strip(item)}\n`;
+      } else {
+        out += `- ${strip(item.text)}\n`;
+        (item.subBullets || []).forEach(s => { out += `    - ${strip(s)}\n`; });
+      }
+    });
+    out += `\n`;
+  });
+  return out.trim();
+}
+
+function copyBoardBriefing() {
+  const d = getDossier();
+  const bb = d && d.boardBriefing;
+  const btn = document.getElementById('boardBriefingCopyBtn');
+  if (!bb) return;
+  const text = boardBriefingPlainText(bb, boardBriefingLength);
+  const onDone = ok => {
+    if (!btn) return;
+    const orig = btn.dataset.origLabel || btn.textContent;
+    btn.dataset.origLabel = orig;
+    btn.textContent = ok ? 'Copied \u2713' : 'Copy failed \u2014 select manually';
+    btn.classList.toggle('copied', ok);
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => onDone(true)).catch(() => onDone(false));
+  } else {
+    onDone(false);
+  }
+}
+
+function renderBoardBriefingView() {
+  const d = getDossier();
+  const container = document.getElementById('boardBriefingView');
+  const bb = d && d.boardBriefing;
+  if (!bb) {
+    container.innerHTML = `<div class="cd-intro">No Board Briefing available for this dossier yet.</div>`;
+    return;
+  }
+  const v = bb[boardBriefingLength] || bb.long;
+  const titleSuffix = boardBriefingLength === 'short' ? ' (Short)' : '';
+  container.innerHTML = `
+    <div class="board-briefing-card">
+      <div class="board-briefing-toolbar">
+        <div class="eua-window-toggle">
+          <button class="eua-window-btn ${boardBriefingLength === 'long' ? 'active' : ''}" onclick="setBoardBriefingLength('long')">Long</button>
+          <button class="eua-window-btn ${boardBriefingLength === 'short' ? 'active' : ''}" onclick="setBoardBriefingLength('short')">Short</button>
+        </div>
+        <button class="board-briefing-copy-btn" id="boardBriefingCopyBtn" onclick="copyBoardBriefing()">Copy to clipboard</button>
+      </div>
+      <div class="board-briefing-title">EU ETS Review \u2014 Internal Briefing${titleSuffix}</div>
+      <div class="board-briefing-meta">Last updated: ${bb.lastUpdated || '\u2014'} \u00b7 refreshed daily in the morning briefing</div>
+      <div class="board-briefing-section">
+        <div class="board-briefing-section-title">Background</div>
+        ${boardBriefingBulletsHTML(v.background)}
+      </div>
+      <div class="board-briefing-section">
+        <div class="board-briefing-section-title">Current Political State of Play</div>
+        ${boardBriefingBulletsHTML(v.currentState)}
+      </div>
+      <div class="board-briefing-section">
+        <div class="board-briefing-section-title">Key Messages for E.ON</div>
+        ${boardBriefingBulletsHTML(v.keyMessages)}
+      </div>
+      <div class="board-briefing-section">
+        <div class="board-briefing-section-title">Next Steps</div>
+        ${boardBriefingBulletsHTML(v.nextSteps)}
+      </div>
+    </div>
+  `;
 }
 
 function cdGradeClass(grade) {
@@ -9241,6 +9369,14 @@ DOSSIERS = {
                 "source": "manual",
                 "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table."
               },
+              "ets2delay": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 2,
+                "source": "research",
+                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found."
+              },
               "ets1general": {
                 "stance": "support",
                 "intensity": 3,
@@ -9290,6 +9426,14 @@ DOSSIERS = {
                 "source": "manual",
                 "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table."
               },
+              "ets2delay": {
+                "stance": "support",
+                "intensity": 2,
+                "confidence": 2,
+                "source": "research",
+                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found."
+              },
               "ets1general": {
                 "stance": "support",
                 "intensity": 1,
@@ -9335,7 +9479,7 @@ DOSSIERS = {
             "name": "Italy",
             "group": "Government position",
             "country": "Italy",
-            "role": "Lead signatory, 10-country joint statement (14 Jul 2026, with PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision — primary text supplied by Jonas (16 Jul 2026)",
+            "role": "Signatory, 10-country joint statement (15 Jul 2026, led by Poland, with BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision — primary text supplied by Jonas (16 Jul 2026)",
             "weight": 58.934,
             "stances": {
               "freealloc": {
@@ -9523,7 +9667,7 @@ DOSSIERS = {
             "name": "Poland",
             "group": "Government position",
             "country": "Poland",
-            "role": "Signatory, Jul 2025 joint non-paper on ETS2 price volatility",
+            "role": "Lead signatory, 15 Jul 2026 10-country joint statement (with IT, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be “carefully reconsidered” in the ETS1 revision; also signatory, Jul 2025 joint non-paper on ETS2 price volatility.",
             "weight": 36.498,
             "stances": {
               "mwi": {
@@ -9590,7 +9734,7 @@ DOSSIERS = {
             "name": "Czechia",
             "group": "Government position",
             "country": "Czechia",
-            "role": "Originator, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (14 Jul 2026, primary text supplied by Jonas)",
+            "role": "Originator, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (15 Jul 2026, primary text supplied by Jonas)",
             "weight": 10.909,
             "stances": {
               "freealloc": {
@@ -9650,7 +9794,7 @@ DOSSIERS = {
             "name": "Romania",
             "group": "Government position",
             "country": "Romania",
-            "role": "Signatory, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (14 Jul 2026, primary text supplied by Jonas)",
+            "role": "Signatory, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (15 Jul 2026, primary text supplied by Jonas)",
             "weight": 19.036,
             "stances": {
               "freealloc": {
@@ -9703,7 +9847,7 @@ DOSSIERS = {
             "name": "Slovakia",
             "group": "Government position",
             "country": "Slovakia",
-            "role": "Signatory, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (14 Jul 2026, primary text supplied by Jonas). CAUTION: Slovakia has a track record of using EU climate files as leverage for unrelated political disputes — a stated \"opposed\" position here may reflect bargaining behaviour rather than a substantive policy view.",
+            "role": "Signatory, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (15 Jul 2026, primary text supplied by Jonas). CAUTION: Slovakia has a track record of using EU climate files as leverage for unrelated political disputes — a stated \"opposed\" position here may reflect bargaining behaviour rather than a substantive policy view.",
             "weight": 5.42,
             "stances": {
               "freealloc": {
@@ -9756,7 +9900,7 @@ DOSSIERS = {
             "name": "Hungary",
             "group": "Government position",
             "country": "Hungary",
-            "role": "Signatory, 10-country ETS-1 joint statement (14 Jul 2026, primary text supplied by Jonas). CAUTION: Hungary has a track record of using EU climate files as leverage for unrelated political disputes (rule-of-law, energy sovereignty) — a stated \"opposed\" position here may reflect bargaining behaviour rather than a substantive policy view.",
+            "role": "Signatory, 10-country ETS-1 joint statement (15 Jul 2026, primary text supplied by Jonas). CAUTION: Hungary has a track record of using EU climate files as leverage for unrelated political disputes (rule-of-law, energy sovereignty) — a stated \"opposed\" position here may reflect bargaining behaviour rather than a substantive policy view.",
             "weight": 9.54,
             "stances": {
               "freealloc": {
@@ -9851,7 +9995,7 @@ DOSSIERS = {
             "name": "Greece",
             "group": "Government position",
             "country": "Greece",
-            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
+            "role": "Signatory, 10-country joint statement (15 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 10.409,
             "hideFromList": true,
             "stances": {
@@ -9911,7 +10055,7 @@ DOSSIERS = {
             "name": "Bulgaria",
             "group": "Government position",
             "country": "Bulgaria",
-            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
+            "role": "Signatory, 10-country joint statement (15 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 6.437,
             "hideFromList": true,
             "stances": {
@@ -10075,7 +10219,7 @@ DOSSIERS = {
             "name": "Estonia",
             "group": "Government position",
             "country": "Estonia",
-            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
+            "role": "Signatory, 10-country joint statement (15 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 1.37,
             "hideFromList": true,
             "stances": {
@@ -10116,7 +10260,7 @@ DOSSIERS = {
             "name": "Cyprus",
             "group": "Government position",
             "country": "Cyprus",
-            "role": "Signatory, 10-country joint statement (14 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
+            "role": "Signatory, 10-country joint statement (15 Jul 2026, with IT, PL, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be reconsidered in the ETS1 revision \u2014 promoted from \"not tracked\" to individually tracked per standing practice for primary-sourced multi-country statements (see \u00a728).",
             "weight": 0.98,
             "hideFromList": true,
             "stances": {
@@ -10480,7 +10624,7 @@ DOSSIERS = {
       }
     ],
     "overview": {
-      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final (Arts. 9, 9b, 9c, 10a, 10cc, 10d, 12a/b), plus a companion fallback-benchmarks proposal COM(2026) 619 final (2026/0211(COD), ~€4bn added free allocation 2026-2030) — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed via the primary text: LRF cut to 3.7%/yr 2031-2035 and 1.7%/yr from 2036 (Art. 9), reverting to 2.7% if up to 260m Art. 6 international credits prove unavailable (Art. 9b); a further 250m allowances earmarked 2031-2040 to purchase domestic BECCS/DACCS removals (Art. 9c); free allocation and CBAM-sector protection extended to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (80% upfront, 20% on demonstrated reductions, Art. 10a), lowest 10% of emitters exempt; MSR automatic-invalidation ended (folds in 2026/0085(COD)); Investment Booster 400m EUAs (~€30bn) to 2030 via the new Industrial Decarbonisation Bank (Art. 10cc); Modernisation Fund continued 2031-2040 at a reduced 2% cap-share plus a new 0.5% IDB-linked stream (Art. 10d). Notably, Art. 29a (price containment) is left entirely untouched — a real gap against E.ON's ask. Council remains split: a 10-country bloc led by Italy wants further loosening; 7 countries (NL, DK, ES, FI, PT, LU, SE) defend ambition; DE/FR broker. Per EP rapporteur Liese, Council/Parliament must set positions by end-2026 for a January 2027 trilogue start. Liese\u2019s own account of his majority-building strategy (Contexte, 24 Jul, primary): he rules out any EPP-ECR-PfE-ESN (\u2018Venezuelan\u2019) majority as both personally opposed and unworkable (neither Rassemblement National nor PiS would back an ETS file), but also judges the S&D/Renew/EPP \u2018Platform\u2019 alone not stable enough \u2014 his actual target is Platform plus select ECR members plus the Greens and possibly The Left, explicitly because dropping ECR would cost Belgium and Italy in Council. Refines rather than replaces the standing EPP\u2013S&D\u2013Renew\u2013Greens/EFA base-deal framing (\u00a79.4) with a sharper, on-the-record picture of the real coalition math. Highest-stakes EU energy file in motion for E.ON's cost base and 2030s investment case; E.ON's own first assessment (position paper vs. filed text) shows majority alignment on LRF/MSR/BECCS/threshold/trading, mixed-to-negative on Art. 29a, CBAM export protection, and revenue earmarking effectiveness.",
+      "background": "On 17 July 2026 the Commission formally tabled its comprehensive ETS1 review as COM(2026) 616 final (Arts. 9, 9b, 9c, 10a, 10cc, 10d, 12a/b), plus a companion fallback-benchmarks proposal COM(2026) 619 final (2026/0211(COD), ~€4bn added free allocation 2026-2030) — setting the Phase 5 (2031-2040) framework aligned to the EU's 90%-by-2040 target. Confirmed via the primary text: LRF cut to 3.7%/yr 2031-2035 and 1.7%/yr from 2036 (Art. 9), reverting to 2.7% if up to 260m Art. 6 international credits prove unavailable (Art. 9b); a further 250m allowances earmarked 2031-2040 to purchase domestic BECCS/DACCS removals (Art. 9c); free allocation and CBAM-sector protection extended to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (80% upfront, 20% on demonstrated reductions, Art. 10a), lowest 10% of emitters exempt; MSR automatic-invalidation ended (folds in 2026/0085(COD)); Investment Booster 400m EUAs (~€30bn) to 2030 via the new Industrial Decarbonisation Bank (Art. 10cc); Modernisation Fund continued 2031-2040 at a reduced 2% cap-share plus a new 0.5% IDB-linked stream (Art. 10d). Notably, Art. 29a (price containment) is left entirely untouched — a real gap against E.ON's ask, which wants it strengthened, not just preserved. Separately: ETS1 and ETS2 share the same Directive, and a 10-country bloc led by Poland already called, in a joint statement issued two days before the Commission's proposal, for ETS2 to be “carefully reconsidered” — a request the proposal doesn't appear to have addressed, and which hasn't yet resurfaced as a formal amendment; worth active monitoring given E.ON's gas-retail obligations and electrification strategy, though Germany — historically ETS2's principal architect — is understood to oppose reopening it. Council remains split: the same 10-country bloc (led by Poland) wants further loosening; 7 countries (NL, DK, ES, FI, PT, LU, SE) defend ambition; DE/FR broker. Per EP rapporteur Liese, Council/Parliament must set positions by end-2026 for a January 2027 trilogue start. Liese\u2019s own account of his majority-building strategy (Contexte, 24 Jul, primary): he rules out any EPP-ECR-PfE-ESN (\u2018Venezuelan\u2019) majority as both personally opposed and unworkable (neither Rassemblement National nor PiS would back an ETS file), but also judges the S&D/Renew/EPP \u2018Platform\u2019 alone not stable enough \u2014 his actual target is Platform plus select ECR members plus the Greens and possibly The Left, explicitly because dropping ECR would cost Belgium and Italy in Council. Refines rather than replaces the standing EPP\u2013S&D\u2013Renew\u2013Greens/EFA base-deal framing (\u00a79.4) with a sharper, on-the-record picture of the real coalition math. Highest-stakes EU energy file in motion for E.ON's cost base and 2030s investment case; E.ON's own first assessment (position paper vs. filed text) shows majority alignment on LRF/MSR/BECCS/threshold/trading, mixed-to-negative on Art. 29a, CBAM export protection, and revenue earmarking effectiveness.",
       "milestones": [
         {
           "date": "2026-07-17",
@@ -10726,12 +10870,86 @@ DOSSIERS = {
         {
           "date": "2026-07-20",
           "headline": "Weekend fallout: Council splits 10-7 over the published ETS1 text; Bloss accuses Commission of a \u2018licence to pollute\u2019, Hoekstra calls the figures \u2018completely climate-law proof\u2019",
-          "summary": "Over the weekend, reaction to Friday's formally-tabled COM(2026) 616 final hardened along the already-tracked Council fault line: the Italy-led 10-country bloc (Poland, Czechia, Romania, Slovakia, Hungary, Bulgaria, Cyprus, Estonia, Austria, Greece) welcomed the direction but still wants more (Poland's climate minister Hennig-Kloska called it \u201ca huge success... although we will fight for more\u201d), while Italy and Czechia said they'll still oppose the new investment-linked conditions on free allocation specifically. The 7-country ambition coalition (Netherlands, Denmark, Spain, Finland, Portugal, Luxembourg, Sweden) reiterated its 7 Jul warning against watering down the system. Michael Bloss (Greens/EFA, already tracked) sharpened his opposition, accusing the Commission of handing industry \u201ca licence to pollute for even longer and at a lower cost\u201d and arguing it penalises early movers \u2014 consistent with the Glueck-lesson framing already applied to his FREEALLOC=oppose tag. Commissioner Hoekstra publicly defended the package, rejecting claims it undermines EU climate law as \u201ccompletely climate-law proof\u201d and arguing the investment conditions are designed to keep production in Europe rather than see it move abroad. WWF calculated the slower LRF path would allow roughly 2 billion additional tonnes of CO2 to be emitted versus the current trajectory. BusinessEurope (Markus Beyrer, not a tracked entity) said industry still isn't satisfied \u2014 new conditionality adds \u201cbureaucratic complexity\u201d and the international-credits provision remains \u201cunsatisfactory\u201d. EUAs eased roughly 2.7% over the past month per Trading Economics, consistent with the market having largely priced in a loosening ahead of publication.",
+          "summary": "Over the weekend, reaction to Friday's formally-tabled COM(2026) 616 final hardened along the already-tracked Council fault line: the 10-country bloc led by Poland (Italy, Czechia, Romania, Slovakia, Hungary, Bulgaria, Cyprus, Estonia, Greece) welcomed the direction but still wants more (Poland's climate minister Hennig-Kloska called it \u201ca huge success... although we will fight for more\u201d), while Italy and Czechia said they'll still oppose the new investment-linked conditions on free allocation specifically. The 7-country ambition coalition (Netherlands, Denmark, Spain, Finland, Portugal, Luxembourg, Sweden) reiterated its 7 Jul warning against watering down the system. Michael Bloss (Greens/EFA, already tracked) sharpened his opposition, accusing the Commission of handing industry \u201ca licence to pollute for even longer and at a lower cost\u201d and arguing it penalises early movers \u2014 consistent with the Glueck-lesson framing already applied to his FREEALLOC=oppose tag. Commissioner Hoekstra publicly defended the package, rejecting claims it undermines EU climate law as \u201ccompletely climate-law proof\u201d and arguing the investment conditions are designed to keep production in Europe rather than see it move abroad. WWF calculated the slower LRF path would allow roughly 2 billion additional tonnes of CO2 to be emitted versus the current trajectory. BusinessEurope (Markus Beyrer, not a tracked entity) said industry still isn't satisfied \u2014 new conditionality adds \u201cbureaucratic complexity\u201d and the international-credits provision remains \u201cunsatisfactory\u201d. EUAs eased roughly 2.7% over the past month per Trading Economics, consistent with the market having largely priced in a loosening ahead of publication.",
           "impactNote": "No new stance shifts here \u2014 this is reaction/colour confirming positions already known (Bloss's continued FREEALLOC opposition, the 10-vs-7 Council split, Hoekstra/DG CLIMA's continued backing). The main analytical takeaway for Jonas: both flanks (10-country bloc and industry via BusinessEurope) are simultaneously unsatisfied with the same text from opposite directions \u2014 a classic sign the Commission found a genuine political midpoint, which historically holds up reasonably well through trilogue. Worth watching whether Italy/Czechia's specific conditionality objection hardens into a blocking position once Council starts formal work in the autumn.",
           "sourceLabel": "IBTimes UK (Bernadette B. Tixon, 19 Jul); Commission press remarks",
           "sourceUrl": "https://www.ibtimes.co.uk/ten-eu-states-push-weaker-carbon-rules-seven-others-warn-against-watering-down-ets-1809402"
         }
       ]
+    },
+    "boardBriefing": {
+      "lastUpdated": "2026-07-24",
+      "lastChangeReason": "Initial Board Briefing draft, hand-authored from today's tracker state (see eu_ets_memory.md \u00a793-97 for the content/quality rules governing this feature).",
+      "long": {
+        "background": [
+          "17 July 2026: the Commission tabled its ETS reform proposal, covering both near-term changes (e.g. to the Market Stability Reserve and the Investment Booster) and the system's next phase from 2031.",
+          "From 2031: eases the pace of allowance reduction (the Linear Reduction Factor, LRF) in the early 2030s before tightening again from 2036, extends free allocation to 2038 with investment conditionality, and permits limited international credits from the late 2030s.",
+          "Also requires 50% of national ETS revenues to go toward earmarked priority uses that channel funds back to those bearing the system's costs, and opens the door to integrating permanent carbon removals (e.g. BECCS) from 2031.",
+          "Framed as an ETS1 review, but ETS1 and ETS2 share the same Directive \u2014 amendments could in principle extend to ETS2, worth watching given our gas-retail obligations and electrification strategy.",
+          "Also touches EEM's trading conditions, the auction design of the Industrial Decarbonisation Bank (IDB) \u2014 of interest to EIS \u2014 the Modernisation Fund's future across our CEE markets, and the case for carbon capture at our Swedish waste-incineration plants.",
+          "Germany has publicly backed the proposal, calling the ETS the cornerstone of European climate policy."
+        ],
+        "currentState": [
+          "Council began substantive engagement in mid-July: the Working Party on the Environment met on 20 and 22 July, followed by the Irish Presidency's informal Environment Council in Dublin on 23\u201324 July \u2014 the first ministerial exchange on the file.",
+          {
+            "text": "That session exposed real divisions:",
+            "subBullets": [
+              "Sweden pushed back sharply, warning the slower reform pace \u201crewards those who didn't do their homework\u201d and opposing the free-allocation extension \u2014 hardening a position co-signed with other ambition-coalition states, including Spain and the Netherlands, in an 8 July joint statement.",
+              "A larger Council bloc \u2014 including Poland and Italy \u2014 welcomes the Commission's direction but wants further relief.",
+              "Germany remains supportive of the text as tabled; the Commission has publicly defended the package."
+            ]
+          },
+          "On ETS2 specifically: a 10-country bloc \u2014 led by Poland, including Italy \u2014 already called, in a joint statement two days before the Commission's proposal, for ETS2 to be \u201ccarefully reconsidered.\u201d The proposal doesn't appear to have addressed that ask; it hasn't yet been picked up as a formal amendment Germany, historically the driving force behind ETS2's creation, is understood to oppose reopening it (Reuters, 15 Jul 2026), though this isn't yet a direct, on-the-record Berlin statement specific to this review.",
+          "In Parliament: EPP rapporteur Peter Liese broadly welcomes the proposal but wants to reshape the LRF trajectory further, tighten revenue earmarking toward hard-to-abate industry, and tie free-allocation conditionality to the investing site.",
+          "Renew's Canfin calls the package \u201cbalanced\u201d and is confident of an EPP\u2013S&D\u2013Renew majority; Liese has floated needing selective ECR and Greens support given Council arithmetic.",
+          "Not all voices in that prospective majority agree: S&D has called parts of the proposal too soft and has not taken a position on widening scope to municipal waste incineration specifically \u2014 worth watching given S&D's core role in the target majority; Greens/EFA have been sharply critical; ECR opposes widening scope to municipal waste incineration, maritime and aviation \u2014 cutting against one of our own asks, though ECR's coalition role is more peripheral.",
+          "Business reaction is mixed and sector-specific; environmental NGOs are uniformly critical. EUA prices are up roughly 6\u20138% since the pre-proposal low, suggesting the market reads the reform as price-supportive."
+        ],
+        "keyMessages": [
+          "Top priority: a Council bloc has already asked for ETS2 to be reconsidered within this file \u2014 screen every amendment for whether that gains legislative traction.",
+          "Preserve ETS1 as a credible central instrument.",
+          "Secure EU-wide integration of municipal waste incineration \u2014 letting us pass carbon costs upstream at our Swedish plants rather than risk waste being exported to avoid them \u2014 together with carbon-removals integration (e.g. BECCS) to support carbon capture there.",
+          "Strengthen the price-containment mechanism (Article 29a) and resist new trading restrictions relevant to EEM.",
+          "Help shape the IDB's auction design.",
+          "Push for the Modernisation Fund to continue at scale, given its track record across our CEE markets.",
+          "More consequential than ECR's opposition to widening waste-incineration scope (ECR is a possible, not core, coalition partner): S&D \u2014 a core partner in Liese's target majority \u2014 has not staked out any position on the issue at all, unlike Greens/EFA (supportive) or ECR (opposed). That silence from a majority-critical group is the real coalition-math risk to watch and worth targeted outreach before it hardens."
+        ],
+        "nextSteps": [
+          "Liese's draft rapporteur report \u2014 expected as early as September, setting Parliament's negotiating baseline.",
+          "First formal Environment Council under the Irish Presidency \u2014 12 October.",
+          "Presidency's ambition: political agreement in principle at the December Environment Council \u2014 genuinely uncertain given the divisions at Dublin.",
+          "Both co-legislators expected to have formed positions by end-2026, with trilogues beginning January 2027.",
+          "Watch specifically for whether the 10-country bloc's ETS2 ask resurfaces as a formal amendment as Council/Parliament work intensifies."
+        ]
+      },
+      "short": {
+        "background": [
+          "17 July 2026: Commission tabled its ETS reform proposal \u2014 near-term changes (e.g. Market Stability Reserve, Investment Booster) plus the system's next phase from 2031 (slower Linear Reduction Factor (LRF) pace, free allocation to 2038, limited international credits, 50% revenue earmarking to cost-bearers, carbon-removals integration e.g. BECCS).",
+          "Shares one Directive with ETS2 \u2014 worth watching given our gas-retail obligations and electrification strategy.",
+          "Also touches EEM's trading business, the Industrial Decarbonisation Bank (IDB)'s auction design (of interest to EIS), the Modernisation Fund (CEE markets), and carbon capture at our Swedish waste-incineration plants.",
+          "Germany has publicly backed the proposal."
+        ],
+        "currentState": [
+          "Council: substantive work began mid-July; Dublin informal Environment Council (23\u201324 July) saw the first real ministerial clash \u2014 Sweden pushed back sharply, a larger bloc (including Poland and Italy) wants further relief, Germany remains supportive.",
+          "ETS2: a 10-country bloc (led by Poland, including Italy) already called for it to be \u201ccarefully reconsidered\u201d before the proposal was even published \u2014 not yet a formal amendment, but live Germany is understood to oppose reopening it, though not yet on the record specifically.",
+          "Parliament: EPP rapporteur pushing to reshape the LRF pace and sharpen revenue earmarking; Renew confident of a centrist majority; S&D/Greens call parts too soft, and S&D has yet to stake out a position on municipal waste incineration specifically; ECR opposes widening that scope \u2014 against one of our own asks, though a more peripheral coalition partner.",
+          "Business reaction mixed; NGOs uniformly critical. EUAs up ~6\u20138% since the pre-proposal low \u2014 market reads the reform as price-supportive."
+        ],
+        "keyMessages": [
+          "Screen every amendment for ETS2 implications \u2014 a Council bloc has already asked for it to be reconsidered.",
+          "Preserve ETS1 as a credible central instrument.",
+          "Secure EU-wide waste-incineration integration \u2014 letting us pass carbon costs upstream at our Swedish plants instead of risking waste exports \u2014 alongside carbon-removals integration (e.g. BECCS).",
+          "Strengthen price-containment provisions (Article 29a) relevant to EEM; help shape the IDB's auction design; push for continued Modernisation Fund scale.",
+          "S&D \u2014 a core majority partner \u2014 has not yet taken a position on widening waste-incineration scope; that gap matters more than ECR's opposition, since ECR's coalition role is more peripheral."
+        ],
+        "nextSteps": [
+          "Rapporteur's draft report \u2014 as early as September.",
+          "First formal Environment Council \u2014 12 October.",
+          "Presidency target: political agreement in principle by December \u2014 genuinely uncertain.",
+          "Positions expected by end-2026; trilogues from January 2027.",
+          "Watch for the ETS2 ask resurfacing as a formal amendment."
+        ]
+      }
     }
   }
 };
