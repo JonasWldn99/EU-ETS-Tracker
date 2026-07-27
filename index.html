@@ -1467,14 +1467,36 @@ function renderOverviewView() {
 
   function sortByDate(a, b) { return (a.date || '').localeCompare(b.date || ''); }
 
+  // Past events clutter the column fast once a dossier has been running for months.
+  // Only genuinely major past milestones (Commission proposal tabled, ENVI Committee Report
+  // adopted, EP plenary position, Council General Approach -- flagged via `keyMilestone: true`
+  // in the data) stay visible by default once occurred:true; every other past event collapses
+  // behind a per-column "Show N past events" toggle, same expandState/toggleExpand pattern
+  // already used for Public Events (see eventsToggleHTML above). Upcoming (occurred:false)
+  // items are always shown regardless -- this only thins out the past.
+  function splitMilestones(items) {
+    const upcomingOrKey = items.filter(m => !m.occurred || m.keyMilestone);
+    const pastOther = items.filter(m => m.occurred && !m.keyMilestone);
+    return { upcomingOrKey, pastOther };
+  }
+  function milestoneColBodyHTML(items, expandKey) {
+    if (!items.length) return `<div class="milestone-col-empty">No tracked milestones.</div>`;
+    const { upcomingOrKey, pastOther } = splitMilestones(items);
+    const expanded = !!expandState[expandKey];
+    const shown = (expanded ? [...upcomingOrKey, ...pastOther] : upcomingOrKey).sort(sortByDate);
+    const rowsHTML = shown.map(m => milestoneRowHTML(m, false)).join('');
+    const toggleHTML = pastOther.length
+      ? `<div class="event-col-expand" onclick="toggleExpand('${expandKey}'); renderOverviewView();">${expanded ? '▾ Hide past events' : `▸ Show ${pastOther.length} past event${pastOther.length > 1 ? 's' : ''}`}</div>`
+      : '';
+    return toggleHTML + rowsHTML;
+  }
+
   const allMilestones = ov.milestones || [];
   const jointMilestones = allMilestones.filter(m => m.institution === 'joint').sort(sortByDate);
   const colsHTML = Object.keys(MILESTONE_INST_META).map(instId => {
     const meta = MILESTONE_INST_META[instId];
     const items = allMilestones.filter(m => m.institution === instId).sort(sortByDate);
-    const bodyHTML = items.length
-      ? items.map(m => milestoneRowHTML(m, false)).join('')
-      : `<div class="milestone-col-empty">No tracked milestones.</div>`;
+    const bodyHTML = milestoneColBodyHTML(items, `milestones-${instId}`);
     return `
       <div class="milestone-col">
         <div class="milestone-col-header">
@@ -1509,10 +1531,21 @@ function renderOverviewView() {
       }</div>
     </div>`;
 
-  const jointHTML = jointMilestones.length ? `
+  const jointBodyHTML = (() => {
+    if (!jointMilestones.length) return '';
+    const { upcomingOrKey, pastOther } = splitMilestones(jointMilestones);
+    const expandKey = 'milestones-joint';
+    const expanded = !!expandState[expandKey];
+    const shown = (expanded ? [...upcomingOrKey, ...pastOther] : upcomingOrKey).sort(sortByDate);
+    const toggleHTML = pastOther.length
+      ? `<div class="event-col-expand" onclick="toggleExpand('${expandKey}'); renderOverviewView();">${expanded ? '▾ Hide past events' : `▸ Show ${pastOther.length} past event${pastOther.length > 1 ? 's' : ''}`}</div>`
+      : '';
+    return toggleHTML + shown.map(m => milestoneRowHTML(m, true)).join('');
+  })();
+  const jointHTML = jointBodyHTML ? `
     <div class="milestone-joint-wrap">
       <div class="milestone-joint-label">Joint / cross-institutional milestones</div>
-      ${jointMilestones.map(m => milestoneRowHTML(m, true)).join('')}
+      ${jointBodyHTML}
     </div>` : '';
 
   container.innerHTML = `
@@ -10629,6 +10662,7 @@ DOSSIERS = {
         {
           "date": "2026-07-17",
           "title": "Commission's comprehensive ETS1 review proposal",
+          "keyMilestone": true,
           "status": "Occurred — formally tabled as COM(2026) 616 final, presented by EVP Ribera, Commissioner Hoekstra and Commissioner Jørgensen",
           "note": "Formally tabled 17 Jul as COM(2026) 616 final, confirming the Reuters preview's profile over Bloomberg's softer leak. Sets the Phase 5 (2031-2040) framework: LRF cut to 3.7%/yr from 2031 (1.7%/yr from 2036), free allocation/CBAM phase-out extended to 2038 and made investment-conditional from 2031, MSR invalidation mechanism ended. Investment Booster confirmed at ~€30bn to 2030 plus ~€70bn more from 2031. Council remains split 10 countries wanting more vs. 7 defending ambition; positions due end-2026 for a Jan 2027 trilogue start.",
           "url": "https://climate.ec.europa.eu/document/download/c0b4ca8e-0e12-4b4e-9976-98c0b4224410_en",
