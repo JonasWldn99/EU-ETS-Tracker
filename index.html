@@ -258,8 +258,16 @@
   .reaction-feed { margin-bottom: 34px; padding-bottom: 26px; border-bottom: 1px solid var(--border); }
   .reaction-feed-title { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-primary); font-weight: 600; margin-bottom: 6px; }
   .reaction-empty { font-size: 11px; color: var(--text-tertiary); font-style: italic; padding: 6px 2px; }
-  .reaction-feed-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 16px; }
+  .reaction-feed-cols { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-top: 16px; }
   @media (max-width: 1100px) { .reaction-feed-cols { grid-template-columns: 1fr; } }
+  /* Institutional rubric holds two sub-columns (EP + Council) and therefore gets twice the width
+     of Business/NGO. Below 1400px it stacks internally before the outer grid collapses at 1100px. */
+  .reaction-feed-group { display: flex; flex-direction: column; }
+  .reaction-feed-group-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .reaction-feed-group-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 1400px) { .reaction-feed-group-cols { grid-template-columns: 1fr; } }
+  .reaction-feed-subcol-title { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); opacity: 0.85; margin-bottom: 8px; }
+  .reaction-detail-toggle { margin-top: 6px; }
   .reaction-feed-col-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
   .reaction-card2 { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .reaction-card2.reaction-tone-support { border-left-color: var(--support); background: rgba(127,176,105,0.06); }
@@ -1816,7 +1824,28 @@ function ltPositionCellHTML(col, expandKey) {
   </div>`;
 }
 
-function reactionCard2HTML(r) {
+// Renders the short `summary` by default with a "more detailed reaction" toggle revealing the full
+// `text`. Keeps each column scannable now that Council/Member State entries are tracked exhaustively
+// (every MS with a public reaction), which would otherwise make the feed unreadably long.
+// Falls back to `text` when no `summary` exists, so a card added without one still renders.
+function reactionDetailHTML(r, keyBase) {
+  const hasSummary = !!r.summary;
+  const detailKey = `reactiondetail-${keyBase}`;
+  const expanded = !!expandState[detailKey];
+  if (!hasSummary) return `<div class="reaction-card2-text">${r.text}</div>`;
+  const bodyHTML = expanded
+    ? `<div class="reaction-card2-text">${r.text}</div>`
+    : `<div class="reaction-card2-text">${r.summary}</div>`;
+  const toggleHTML = `<div class="cd-expand-toggle reaction-detail-toggle" onclick="toggleExpand('${detailKey}'); renderLegislativeView();">${expanded ? '▾ Show less' : '▸ More detailed reaction'}</div>`;
+  return bodyHTML + toggleHTML;
+}
+
+// Stable per-card key for expand state -- actor names are unique within the feed (QA-enforced).
+function reactionKeyBase(groupKey, actor) {
+  return `${groupKey}-${String(actor).replace(/[^A-Za-z0-9]/g, '')}`;
+}
+
+function reactionCard2HTML(r, groupKey) {
   const roleHTML = r.role ? ` <span class="reaction-card2-role">(${r.role})</span>` : '';
   const nameHTML = r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${r.actor}</a>` : r.actor;
   const topicsHTML = (r.topics || []).map(code => `<span class="reaction-topic-tag">${code}</span>`).join('');
@@ -1829,7 +1858,7 @@ function reactionCard2HTML(r) {
       <span class="reaction-actor2">${nameHTML}${roleHTML}</span>
     </div>
     ${critiqueHTML}
-    <div class="reaction-card2-text">${r.text}</div>
+    ${reactionDetailHTML(r, reactionKeyBase(groupKey || 'x', r.actor))}
     <div class="reaction-card2-topics">${topicsHTML}</div>
     <div class="reaction-card2-source">${r.source}${r.date ? ' · ' + r.date : ''}</div>
   </div>`;
@@ -1962,7 +1991,7 @@ function reactionGroupCard2HTML(r, groupKey) {
       <span class="reaction-actor2">${nameHTML}${roleHTML}</span>
     </div>
     ${critiqueHTML}
-    <div class="reaction-card2-text">${r.text}</div>
+    ${reactionDetailHTML(r, reactionKeyBase(groupKey || 'x', r.actor))}
     <div class="reaction-card2-topics">${topicsHTML}</div>
     <div class="reaction-card2-source">${r.source}${r.date ? ' · ' + r.date : ''}</div>
     ${memberToggleHTML}
@@ -1970,14 +1999,36 @@ function reactionGroupCard2HTML(r, groupKey) {
   </div>`;
 }
 
-function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel) {
+// Looks up an actor's political weight from the institutions data via its `entityId`:
+// Council QMV weight for Member States, seat count for EP political groups. Returns 0 when the
+// reaction carries no entityId (business/NGO actors have no institutional weight), so those
+// columns fall back to the date tiebreaker exactly as before.
+function reactionPoliticalWeight(r) {
+  if (!r || !r.entityId) return 0;
+  const d = getDossier();
+  const insts = (d && d.institutions) || [];
+  for (const inst of insts) {
+    const hit = (inst.entities || []).find(e => e.id === r.entityId);
+    if (hit) return hit.weight || 0;
+  }
+  return 0;
+}
+
+function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel, isSubCol) {
   const DEFAULT_SHOWN = 5;
-  // Sort by stakeholder tier (1 = highest priority) per the E.ON stakeholder-relevance
-  // hierarchy (eu_ets_memory.md \u00a787): Tier 1 > Tier 2 > Tier 3. Untiered entries sort last.
+  // Sort by stakeholder tier (1 = highest priority) per the E.ON stakeholder-relevance hierarchy
+  // (eu_ets_memory.md \u00a787): Tier 1 > Tier 2 > Tier 3, untiered last. WITHIN a tier the tiebreaker is
+  // political weight (Council QMV / EP seats), not recency -- once every Member State with a public
+  // reaction is tracked, a date tiebreaker would make the default top-5 mean "who spoke most
+  // recently" rather than "who matters most". Date remains the final tiebreaker for actors with no
+  // institutional weight (business/NGO), preserving the previous behaviour in those two columns.
   const sorted = (list || []).slice().sort((a, b) => {
     const ta = a.tier == null ? 99 : a.tier;
     const tb = b.tier == null ? 99 : b.tier;
     if (ta !== tb) return ta - tb;
+    const wa = reactionPoliticalWeight(a);
+    const wb = reactionPoliticalWeight(b);
+    if (wa !== wb) return wb - wa;
     return (b.date || '').localeCompare(a.date || '');
   });
   const expandKey = `reactionfeed-${groupKey}`;
@@ -1988,11 +2039,33 @@ function reactionFeedColHTML(list, groupKey, colTitle, emptyLabel) {
     ? `<div class="cd-expand-toggle" onclick="toggleExpand('${expandKey}'); renderLegislativeView();">${isExpanded ? '▾ Hide' : `▸ Show ${rest} more`}</div>`
     : '';
   const bodyHTML = sorted.length
-    ? shown.map(item => item.members && item.members.length ? reactionGroupCard2HTML(item, groupKey) : reactionCard2HTML(item)).join('') + toggleHTML
+    ? shown.map(item => item.members && item.members.length ? reactionGroupCard2HTML(item, groupKey) : reactionCard2HTML(item, groupKey)).join('') + toggleHTML
     : `<div class="reaction-empty">No ${emptyLabel} reactions tracked yet.</div>`;
+  const titleCls = isSubCol ? 'reaction-feed-subcol-title' : 'reaction-feed-col-title';
   return `<div class="reaction-feed-col">
-    <div class="reaction-feed-col-title">${colTitle}</div>
+    <div class="${titleCls}">${colTitle}</div>
     ${bodyHTML}
+  </div>`;
+}
+
+// The institutional column is split into two independently-capped sub-columns (each with its own
+// top-5 + "Show N more"), because Parliament and Council are different arenas and, now that every
+// Member State with a public reaction is tracked, ~27 states would otherwise crowd the 8 EP groups
+// out of a shared 5-slot default view (or vice versa depending on the news cycle).
+// The split is derived at render time from each card's existing `actorType` -- no data migration,
+// and a card whose actorType is neither EP- nor Council-flavoured still lands in the EP sub-column
+// rather than vanishing.
+function reactionInstitutionalGroupHTML(list) {
+  const all = list || [];
+  const isCouncil = x => x.actorType === 'Council/Member State';
+  const council = all.filter(isCouncil);
+  const parliament = all.filter(x => !isCouncil(x));
+  return `<div class="reaction-feed-group">
+    <div class="reaction-feed-group-title">Institutional</div>
+    <div class="reaction-feed-group-cols">
+      ${reactionFeedColHTML(parliament, 'instEp', 'European Parliament (Groups / MEPs)', 'European Parliament', true)}
+      ${reactionFeedColHTML(council, 'instCouncil', 'Council · Member States', 'Council/Member State', true)}
+    </div>
   </div>`;
 }
 
@@ -2001,7 +2074,7 @@ function renderReactionFeed(d) {
   return `<div class="reaction-feed">
     <div class="reaction-feed-title">Stakeholder Reactions to the Commission Proposal</div>
     <div class="reaction-feed-top">
-      <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per category by default; use "Show more" to see the rest. Colour here reflects each stakeholder's own overall tone toward the Commission's proposal (welcoming / critical / mixed) — a different axis from the Aligned-with-E.ON / Opposed-to-E.ON colouring used in the official table below and in the other two tabs, so it can never be mistaken for an official alignment verdict.</div>
+      <div class="cd-intro">Curated to the stakeholders that matter most — one consolidated entry per actor summarising their position across topics (not repeated topic by topic). Informal commentary, not an official position (those live in the table below, once tabled). Shows the 5 most relevant per column by default \u2014 ranked by stakeholder tier, then political weight (Council QMV / EP seats) \u2014 with "Show more" for the rest. Each card shows a short summary; use "More detailed reaction" for the full position. Council/Member State coverage is exhaustive: every Member State is added as soon as a public reaction exists. Colour here reflects each stakeholder's own overall tone toward the Commission's proposal (welcoming / critical / mixed) — a different axis from the Aligned-with-E.ON / Opposed-to-E.ON colouring used in the official table below and in the other two tabs, so it can never be mistaken for an official alignment verdict.</div>
       ${reactionPieBlockHTML(d)}
     </div>
     ${reactionCriticismsRowHTML(d)}
@@ -2011,7 +2084,7 @@ function renderReactionFeed(d) {
       <div class="reaction-tone-legend-item"><span class="reaction-tone-swatch" style="background:var(--neutral)"></span>Mixed / not clearly one or the other</div>
     </div>
     <div class="reaction-feed-cols">
-      ${reactionFeedColHTML(r.institutional, 'inst', 'Institutional (MEPs / Council · Member States)', 'institutional')}
+      ${reactionInstitutionalGroupHTML(r.institutional)}
       ${reactionFeedColHTML(r.business, 'biz', 'Business (Trade Associations)', 'business')}
       ${reactionFeedColHTML(r.ngoThinkTank, 'ngo', 'NGO / Think-Tank', 'NGO/think-tank')}
     </div>
@@ -2140,6 +2213,8 @@ DOSSIERS = {
   "institutional": [
     {
       "actor": "EPP",
+      "summary": "Welcomed the proposal via rapporteur Liese as “a good day for the climate, for competitiveness and, above all, for jobs” — but is preparing amendments on the LRF path, revenue earmarking and site-specific free-allocation conditions.",
+      "entityId": "epp",
       "actorType": "EP Political Group",
       "role": "Lead negotiating group via rapporteur Peter Liese",
       "stance": "support",
@@ -2174,6 +2249,8 @@ DOSSIERS = {
     },
     {
       "actor": "Germany (BMUKN/Schneider)",
+      "summary": "Calls the ETS “the cornerstone of European climate policy” and welcomes the fallback-benchmark flexibilities for energy-intensive industry; rates the Investment Booster/IDB approach “a step in the right direction.”",
+      "entityId": "germany-environment-ministry-under-schneider",
       "actorType": "Council/Member State",
       "role": "Federal Government \u2014 Environment Ministry",
       "stance": "support",
@@ -2190,6 +2267,8 @@ DOSSIERS = {
     },
     {
       "actor": "Sweden (Westl\u00e9n)",
+      "summary": "The sharpest Council-side critic so far: the slower pace “is rewarding those who didn’t do their homework,” and Sweden opposes extending free allocation outright.",
+      "entityId": "sweden",
       "actorType": "Council/Member State",
       "role": "State Secretary for Climate and the Environment",
       "stance": "oppose",
@@ -2206,9 +2285,11 @@ DOSSIERS = {
     },
     {
       "actor": "Poland (Hennig-Kloska/Bolesta)",
+      "summary": "Welcomes the package as “a success of Polish diplomacy” — the first easing rather than tightening of EU climate policy — but wants more: a larger Modernisation Fund, and remains lead signatory of the still-unaddressed ask to reconsider ETS2.",
+      "entityId": "poland",
       "actorType": "Council/Member State",
       "role": "Ministry of Climate and Environment — minister and deputy minister; lead signatory of the 15 Jul 2026 10-country joint statement",
-      "stance": "support",
+      "stance": "mixed",
       "text": "Climate Minister Paulina Hennig-Kloska welcomed the proposal as \u201ca success of Polish diplomacy,\u201d saying it may \u201cgive breathing room\u201d to Member States and that for the first time EU climate policy is being eased rather than tightened \u2014 while stressing Poland will keep pushing to reduce the burden of climate policy so Europe does not lose competitiveness. Deputy Minister Krzysztof Bolesta named the concrete follow-on asks: a larger Modernisation Fund (the current ~650m allowances for 2021-2030 falls to 280m for the next decade under the Commission\u2019s text) and the best possible operating conditions for industry in Poland and the EU. Note the tension with Poland\u2019s own pre-proposal positioning: it remains lead signatory of the 15 Jul 10-country joint statement asking that ETS2 be \u201ccarefully reconsidered\u201d \u2014 an ask the proposal does not address \u2014 so the welcome is directional, not settled satisfaction. Clean Energy Wire\u2019s aggregation additionally attributes to Bolesta a goal of making ETS2 \u201cvoluntary\u201d; that specific, materially stronger claim does not appear in the Polish-language PAP coverage checked and is flagged as secondary-sourced/uncorroborated rather than treated as Poland\u2019s stated position.",
       "source": "PAP via energetyka24.com (20 Jul 2026, Polish-language wire coverage, primary-adjacent); Clean Energy Wire (24 Jul 2026, secondary aggregation citing the government\u2019s own gov.pl statement)",
       "url": "https://energetyka24.com/polityka/prawo/ets-pozytywnym-impulsem-czy-farsa-polska-polityka-vs-reforma-systemu",
@@ -2223,6 +2304,8 @@ DOSSIERS = {
     },
     {
       "actor": "Greens/EFA",
+      "summary": "Sharply critical: the proposal hands industry “a licence to pollute for even longer and at a lower cost,” and free allowances are “nothing more than subsidies for the fossil fuel industry.”",
+      "entityId": "greens-efa",
       "actorType": "EP Political Group",
       "role": "Bloss: shadow rapporteur, ENVI",
       "stance": "oppose",
@@ -2283,6 +2366,8 @@ DOSSIERS = {
     },
     {
       "actor": "S&D",
+      "summary": "Split so far — Wölken and Maran reacted neutrally on process, while González Casares argues the proposal doesn’t go far enough, calling the 80/20 free-allocation conditionality “far too generous.”",
+      "entityId": "sandd",
       "actorType": "EP Political Group",
       "role": null,
       "stance": "mixed",
@@ -2341,6 +2426,8 @@ DOSSIERS = {
     },
     {
       "actor": "Alexandr Vondra",
+      "summary": "Wants ETS1/ETS2 suspended or fundamentally reformed: more free allocation, a slower minimum LRF, and no scope extension to municipal waste incineration, maritime or aviation.",
+      "entityId": "alexandr-vondra",
       "actorType": "MEP",
       "role": "ECR, ENVI Coordinator",
       "stance": "oppose",
@@ -2359,6 +2446,8 @@ DOSSIERS = {
     },
     {
       "actor": "Renew Europe",
+      "summary": "Channelled through Pascal Canfin: calls the proposal “balanced” and expects a compromise to be found between S&D, Renew and the EPP.",
+      "entityId": "renew",
       "actorType": "EP Political Group",
       "role": "Canfin: ENVI Coordinator",
       "stance": "neutral",
@@ -2389,6 +2478,7 @@ DOSSIERS = {
   "business": [
     {
       "actor": "IETA",
+      "summary": "Sees “a far-reaching evolution of the EU ETS” moving toward the integrated post-2030 vision it has called for; wants a rules-based framework to avoid ad hoc political intervention.",
       "actorType": "Trade Association",
       "role": null,
       "stance": "support",
@@ -2405,6 +2495,7 @@ DOSSIERS = {
     },
     {
       "actor": "Cefic",
+      "summary": "Calls it “a missed opportunity” that “deepens uncertainty” — the flattened LRF and international-credits opening are “fully offset” by lost carbon-leakage protection and new conditionality bureaucracy.",
       "actorType": "Trade Association",
       "role": "European chemical industry",
       "stance": "oppose",
@@ -2422,6 +2513,7 @@ DOSSIERS = {
     },
     {
       "actor": "EUROFER",
+      "summary": "The free-allocation cut around 2029-30 is “largely unchanged,” the main steel benchmark still faces a sharp 2031 cut, and “the long-promised structural solution for CBAM exports is still missing.”",
       "actorType": "Trade Association",
       "role": "European steel industry",
       "stance": "oppose",
@@ -2439,6 +2531,7 @@ DOSSIERS = {
     },
     {
       "actor": "WindEurope",
+      "summary": "Warns the reform “risks undermining” the Electrification Action Plan by slowing decarbonisation and failing to channel ETS revenues into industrial electrification.",
       "actorType": "Trade Association",
       "role": "European wind energy industry",
       "stance": "oppose",
@@ -2458,6 +2551,7 @@ DOSSIERS = {
     },
     {
       "actor": "nucleareurope",
+      "summary": "Supports redirecting ETS revenues into industries with clear decarbonisation plans, explicitly backing the requirement that Member States spend 50% of national ETS revenues on decarbonisation.",
       "actorType": "Trade Association",
       "role": "European nuclear energy industry",
       "stance": "support",
@@ -2473,6 +2567,7 @@ DOSSIERS = {
     },
     {
       "actor": "BusinessEurope",
+      "summary": "Welcomes that the Commission “recognised the urgent need to reform the EU ETS,” but withholds a full verdict pending members’ own assessment; flags conditionality bureaucracy and the “unsatisfactory” international-credits role.",
       "actorType": "Trade Association",
       "role": null,
       "stance": "neutral",
@@ -2489,6 +2584,7 @@ DOSSIERS = {
     },
     {
       "actor": "Fertilizers Europe",
+      "summary": "Says the review “fails to address fertilizer sector realities” — leakage exposure stays unresolved and the CBAM export gap open, with costs ultimately passed through to EU farmers.",
       "actorType": "Trade Association",
       "role": "European fertilizer industry",
       "stance": "oppose",
@@ -2505,6 +2601,7 @@ DOSSIERS = {
     },
     {
       "actor": "Cement Europe (formerly Cembureau)",
+      "summary": "Calls it “an important step” and welcomes the IDB and Carbon Contracts for Difference, but does “not support a slower phase out of the free allowances for CBAM sectors” absent a watertight CBAM.",
       "actorType": "Trade Association",
       "role": "European cement industry",
       "stance": "neutral",
@@ -2525,6 +2622,7 @@ DOSSIERS = {
   "ngoThinkTank": [
     {
       "actor": "European Environmental Bureau (EEB)",
+      "summary": "Says the reform “weakens key provisions, rewarding polluters” — a weaker cap, chronic-oversupply risk from the MSR changes, and free-allocation conditionality too weak to bite.",
       "actorType": "NGO",
       "role": null,
       "stance": "oppose",
@@ -2542,6 +2640,7 @@ DOSSIERS = {
     },
     {
       "actor": "E3G",
+      "summary": "Mixed verdict: welcomes partial conditionality, the binding revenue floor and the IDB as genuine steps, but says the Commission “yielded to political pressure” and the package “falls short of a comprehensive investment framework.”",
       "actorType": "Think Tank",
       "role": null,
       "stance": "neutral",
@@ -2558,6 +2657,7 @@ DOSSIERS = {
     },
     {
       "actor": "Öko-Institut",
+      "summary": "Its “Out of Balance” brief warns of significant 2031-2040 oversupply from the lower LRF plus Booster/CDR allowances; recommends keeping the LRF at 4.4% to at least 2035 — directly opposed to E.ON’s ask.",
       "actorType": "Think Tank",
       "role": null,
       "stance": "oppose",
@@ -2574,6 +2674,7 @@ DOSSIERS = {
     },
     {
       "actor": "CAN Europe",
+      "summary": "“Weakening the ETS now is a gift to polluters” — extending free allowances to 2038 “rewards delay,” conditionality is “too weak” without a clawback, and removals/credits dilute environmental integrity.",
       "actorType": "NGO",
       "role": null,
       "stance": "oppose",
@@ -2591,6 +2692,7 @@ DOSSIERS = {
     },
     {
       "actor": "WWF European Policy Office",
+      "summary": "Likens the ETS to a Jenga tower destabilised by removing blocks; says the slower LRF allows an extra 2 billion tonnes of CO₂ and calls the 250m BECCS/DACCS allowances “flawed.”",
       "actorType": "NGO",
       "role": null,
       "stance": "oppose",
@@ -2607,6 +2709,7 @@ DOSSIERS = {
     },
     {
       "actor": "Carbon Market Watch",
+      "summary": "Says the proposal “gifted a fossil fuel lifeline and more free passes to pollute,” kicking the door open to blunting one of the EU’s most effective climate tools.",
       "actorType": "NGO",
       "role": null,
       "stance": "oppose",
