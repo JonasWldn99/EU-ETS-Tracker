@@ -86,6 +86,64 @@
   .sdb-card-meta { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-tertiary); white-space: nowrap; }
   .sdb-chiprow { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
   .sdb-chip-empty { display: inline-block; width: 22px; height: 11px; border-radius: 3px; border: 1px dashed var(--border); opacity: 0.5; }
+
+  /* --- the expansion drawer under a dossier box (§174) -----------------------
+     A box with anything recorded behind it opens in place and shows that dossier's
+     own topic chips, so the positions can be read without leaving the overview.
+     The caret glyphs are the same ▸/▾ the delegation and MEP expanders use — this
+     is the staged-expansion idiom (§130) applied one level up, not a new one. */
+  .sdb-agg--btn { cursor: pointer; }
+  .sdb-agg--btn:hover { filter: brightness(1.3); }
+  .sdb-drawer { margin-top: 7px; padding: 8px 9px 9px; border-left: 2px solid var(--border);
+                background: rgba(255,255,255,0.022); border-radius: 0 4px 4px 0; }
+  .sdb-drawer-head { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em;
+                     text-transform: uppercase; color: var(--text-tertiary); line-height: 1.6; margin-bottom: 7px; }
+  .sdb-drawer .stance-row { margin-top: 0; }
+  .sdb-drawer-detail { font-size: 10.5px; color: var(--text-secondary); line-height: 1.6; }
+  .sdb-drawer-detail b { color: var(--text-tertiary); font-weight: 400; font-family: var(--font-mono);
+                         font-size: 9px; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* An expanded chip's detail, one step inside the drawer that contains it. Same left-rule
+     idiom as the drawer itself, dimmer, so nesting reads as nesting. */
+  .sdb-subbox { margin-top: 7px; padding: 7px 8px; border-left: 2px solid var(--border);
+                background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0; }
+  .sdb-subbox .sdb-drawer-head { margin-bottom: 5px; }
+  .sdb-drawer-foot { margin-top: 8px; font-size: 9.5px; display: flex;
+                     justify-content: space-between; align-items: baseline; gap: 14px; }
+  /* The footnote replaces the second legend line (§175): it sits opposite the dossier link,
+     states where the key lives, and carries the key itself on hover. */
+  .sdb-drawer-note { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em;
+                     color: var(--text-tertiary); opacity: 0.7; cursor: help; text-align: right; }
+  .sdb-drawer-note:hover { opacity: 1; }
+  .sdb-drawer-foot a { color: var(--text-tertiary); text-decoration: none;
+                       border-bottom: 1px dotted rgba(139,147,163,0.5); cursor: pointer; }
+  .sdb-drawer-foot a:hover { color: var(--text-secondary); }
+
+    /* --- cross-dossier alignment boxes (§169) ---------------------------------
+       Same grammar as the topic chips one level down: colour = where they stand,
+       fade = how weakly, border = how much to trust it. Deliberately reuses the
+       stance colour variables so the two levels can never drift apart.
+       (The word was "bold = how strongly" until §172 inverted the marked end to the
+       WEAK case, matching the chips. Comment corrected with the sweep.) */
+    .sdb-agg {
+      font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em;
+      padding: 1px 6px; border-radius: 4px; cursor: help; white-space: nowrap;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+      color: var(--text-tertiary);
+    }
+    .sdb-agg--support { background: rgba(127,176,105,0.16); color: var(--support); border-color: rgba(127,176,105,0.45); }
+    .sdb-agg--oppose  { background: rgba(193,85,75,0.16);  color: var(--oppose);  border-color: rgba(193,85,75,0.45); }
+    .sdb-agg--neutral { background: rgba(139,147,163,0.30); color: #D6DAE1; border-color: rgba(139,147,163,0.7); }
+    /* Faded = the weak case, matching the topic chips' own encoding and value (0.6). The
+       marked state is the WEAK one at both levels, so the vocabulary reads ALIGNED /
+       WEAKLY ALIGNED throughout the tool. */
+    .sdb-agg--weak { opacity: 0.6; }
+    /* dashed = thin coverage. 2px per §163 so the dashes read as a frame. */
+    .sdb-agg--dashed { border-style: dashed; border-width: 2px; padding: 0 5px; }
+    /* not yet assessed — still hoverable, and the tooltip says how far off it is. */
+    .sdb-agg--none { opacity: 0.5; }
+    /* The overview legend sits on its own line under the search box. Its specimens are real
+       `sdb-agg` boxes, so nothing here may set their size or colour — only the row spacing. */
+    .sdb-legend { margin: 0 0 14px; }
   .sdb-country-head { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin: 12px 0 5px; }
 
   /* --- legacy cross-dossier table styles (kept: helpers may return once positions are modelled) --- */
@@ -282,6 +340,12 @@
   a.stance-chip { text-decoration: none; cursor: pointer; }
   a.stance-chip:hover { filter: brightness(1.3); }
   a.stance-chip::after { content: ' ↗'; opacity: 0.6; font-size: 8px; }
+  /* An expandable chip carries a caret exactly as a link chip carries an arrow — same
+     channel, same size, same opacity. The glyph IS the affordance, so no second signal. */
+  .stance-chip--exp { cursor: pointer; }
+  .stance-chip--exp:hover { filter: brightness(1.3); }
+  .stance-chip--exp::after { content: ' ▸'; opacity: 0.6; font-size: 8px; }
+  .stance-chip--exp[data-open="1"]::after { content: ' ▾'; opacity: 0.9; }
 
   .topic-view-header { margin-bottom: 20px; }
   .topic-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-bottom: 6px; }
@@ -982,9 +1046,19 @@ function sourceLabel(s) {
   return 'SOURCE: unspecified';
 }
 
-function stanceChipHTML(topicId, stances) {
+// `dossier` is optional and defaults to the one on screen, so every existing call site is
+// unchanged. The cross-dossier Stakeholder Overview iterates ALL dossiers and therefore
+// cannot rely on getDossier(); passing the dossier in is what lets the overview's drawers
+// render the very same chips as the dossier's own "By Institution" row, from the same
+// function, so the two can never drift apart. (Jonas, 3 Aug 2026 — §174.)
+// `expKey` (optional) turns the chip from a link into a toggle: used only inside the
+// Stakeholder Overview's drawers, where clicking a chip opens its source and note in place
+// rather than navigating away. The source is not lost — it moves inside the sub-box. The
+// affordance follows the chip grammar that already exists: a link chip carries an arrow, so
+// an expandable chip carries a caret, rather than inventing a second signal. (§175)
+function stanceChipHTML(topicId, stances, dossier, expKey) {
   const s = stances[topicId];
-  const topic = getDossier().topics.find(t => t.id === topicId);
+  const topic = (dossier || getDossier()).topics.find(t => t.id === topicId);
   if (!s) return `<span class="stance-chip" title="${topic.label}: not yet assessed">${topic.code}</span>`;
   // The stored key is `neutral`; the vocabulary everywhere the user reads is MIXED, so the
   // tooltip says MIXED too. And a Mixed stance has no intensity, so that clause is omitted
@@ -997,6 +1071,11 @@ function stanceChipHTML(topicId, stances) {
   // an absent attribute matches no opacity rule and therefore renders at full strength.
   const intAttr = (s.stance !== 'neutral' && s.intensity != null) ? `data-intensity="${s.intensity}"` : '';
   const safeTip = tip.replace(/"/g,'&quot;');
+  if (expKey) {
+    const open = !!expandState[expKey];
+    return `<span class="stance-chip stance-chip--exp" data-open="${open ? 1 : 0}" data-stance="${s.stance}" ${intAttr} ${lowconf}`
+         + ` title="${safeTip}" onclick="toggleExpand('${expKey}'); renderStakeholderDbView();">${topic.code}</span>`;
+  }
   if (s.url) return `<a class="stance-chip" href="${s.url}" target="_blank" rel="noopener" data-stance="${s.stance}" ${intAttr} ${lowconf} title="${safeTip}">${topic.code}</a>`;
   return `<span class="stance-chip" data-stance="${s.stance}" ${intAttr} ${lowconf} title="${safeTip}">${topic.code}</span>`;
 }
@@ -1396,12 +1475,17 @@ function stanceLabelText(s) {
 // distinguishes successive governments of the same person (Merz I vs. a future Merz II).
 // Suppressed for the two German ministry entities in the ETS dossier, where the minister's name
 // already identifies the position holder (suppressGovSuffix).
-function mandateTagHTML(m, prefix) {
+// The tag shows the MANDATE only — "(Merz I)", "(Macron II)" — with no "Gov" prefix.
+// Jonas, 3 Aug 2026: the prefix was redundant and, for the four states represented by
+// their President rather than their head of government (France, Cyprus, Lithuania,
+// Romania), simply wrong — Macron heads a state, not a government. The office is named
+// precisely in the tooltip, which is where that precision belongs.
+function mandateTagHTML(m) {
   if (!m) return '';
   const tip = m.headOfGovernment
     ? `${m.office}: ${m.headOfGovernment} (${m.party}) — since ${m.since}${m.verified === false ? ' · unverified' : ''}`
     : `${m.label} — since ${m.since}`;
-  return ` <span class="gov-tag" title="${tip}">(${prefix || ''}${m.short || m.label}${m.verified === false ? ' ?' : ''})</span>`;
+  return ` <span class="gov-tag" title="${tip}">(${m.short || m.label}${m.verified === false ? ' ?' : ''})</span>`;
 }
 
 // Institution-level mandates (EP term, Commission College) resolved via a per-dossier cache —
@@ -1430,14 +1514,14 @@ function entityInstitutionMandate(entity) {
 // identifies the position holder.
 function govSuffixHTML(entity) {
   if (!entity || entity.suppressGovSuffix || !entity.mandate) return '';
-  return mandateTagHTML(entity.mandate, 'Gov ');
+  return mandateTagHTML(entity.mandate);
 }
 
 // The institution-wide mandate, rendered once in a column header. Returns nothing for the
 // Council, whose mandates are per Member State and therefore sit on the individual cards.
 function institutionMandateTagHTML(inst) {
   if (!inst || !inst.mandate || inst.groupByField) return '';
-  return mandateTagHTML(inst.mandate, '');
+  return mandateTagHTML(inst.mandate);
 }
 
 function topicRowHTML(entity, topicId, extraClass, nodeId, indent) {
@@ -2368,15 +2452,387 @@ function sdbChartBoxHTML(label) {
   // placed now so the layout matches the per-dossier institution view and does not shift later.
   return `<div class="sdb-chartbox">
     <div class="sdb-chartbox-title">${label}</div>
-    <div class="sdb-chartbox-empty">Cross-dossier alignment<br><span>not yet modelled</span></div>
+    <div class="sdb-chartbox-empty">Institution-wide alignment<br><span>not yet modelled</span></div>
   </div>`;
 }
 
 // Empty position chips, mirroring the per-dossier stance row. Shown blank until we settle how a
 // position should be expressed across several dossiers at once.
-function sdbChipsHTML() {
-  return `<div class="sdb-chiprow" title="Cross-dossier positions not yet modelled">` +
-    Array.from({ length: 10 }, () => '<span class="sdb-chip-empty"></span>').join('') + `</div>`;
+/* ---------------------------------------------------------------------------
+   CROSS-DOSSIER AGGREGATION  (§169, Jonas, 3 Aug 2026)
+   Turns a dossier's many per-topic stances into ONE box per actor in the realm
+   Stakeholder Overview, plus a standalone box for each Tier-0 topic.
+
+     contribution = tier weight x confidence x direction x intensity
+       tier weight   T1 3 / T2 2 / T3 1      how much the topic matters to E.ON
+       direction     support +1 / oppose -1 / Mixed 0
+       intensity     1-3                     how much of E.ON's ask they deliver
+       confidence    conf1 2/3, conf2-3 1    how much the topic sways the verdict
+
+     score    = sum(contribution) / sum(max)   over ASSESSED topics only  -> -1..+1
+     coverage = sum(tier x confidence) assessed / sum(tier) of ALL non-tier-0 topics
+
+   Three signals, three questions, never blended (the same grammar as the topic
+   chips one level down):
+     colour  = score      where they stand
+     bold    = score      how strongly            (>= +-0.50)
+     border  = coverage   how much to trust it    (dashed 25-50%, solid >= 50%)
+
+   Unassessed topics are excluded from the score and lower coverage only —
+   silence is never evidence. Counting it as neutral would let ignorance decide:
+   ECR, which wants to halt the ETS, would render grey off its one recorded topic.
+   ------------------------------------------------------------------------- */
+const AGG = {
+  tierWeight: { 0: 0, 1: 3, 2: 2, 3: 1 },
+  confWeight: { 1: 2 / 3, 2: 1, 3: 1 },
+  floorCoverage: 0.25,     // below this (or with no tier-1 topic) -> not yet assessed
+  solidCoverage: 0.50,     // at or above this -> solid border instead of dashed
+  strongScore: 0.50,   // at or above this the box is unmarked; below it, faded
+  weakBelow: true,
+  leanScore: 0.20
+};
+
+// Merge several entities of the SAME actor (Germany's two ministries, and any
+// future split actor) into one stance set. Agreement averages; disagreement is
+// Mixed, which is exactly route (b) of the Mixed definition — "its constituent
+// voices diverge". Rounded DOWN so a parent never looks better evidenced than
+// its parts jointly support. Entities without a weight (the Commission uses
+// weightMode 'single') fall back to an equal-weight mean rather than NaN.
+function aggMergeStances(entities) {
+  const out = {};
+  const keys = [...new Set(entities.flatMap(e => Object.keys(e.stances || {})))];
+  keys.forEach(k => {
+    const parts = entities.filter(e => e.stances && e.stances[k])
+      .map(e => ({ w: (typeof e.weight === 'number' && e.weight > 0) ? e.weight : 1, s: e.stances[k], name: e.name || e.id || '' }));
+    if (!parts.length) return;
+    const W = parts.reduce((a, p) => a + p.w, 0);
+    const dirs = [...new Set(parts.map(p => p.s.stance))];
+    const conf = Math.floor(parts.reduce((a, p) => a + p.w * p.s.confidence, 0) / W);
+    if (dirs.length > 1) { out[k] = aggProv({ stance: 'neutral', confidence: Math.max(...parts.map(p => p.s.confidence)) }, parts, true); return; }
+    if (dirs[0] === 'neutral') { out[k] = aggProv({ stance: 'neutral', confidence: conf }, parts, false); return; }
+    out[k] = aggProv({ stance: dirs[0], confidence: conf,
+               intensity: Math.floor(parts.reduce((a, p) => a + p.w * (p.s.intensity || 0), 0) / W) }, parts, false);
+  });
+  return out;
+}
+
+/* ---------------------------------------------------------------------------
+   PROVENANCE ON A MERGED STANCE (§174) — Jonas, 3 Aug 2026
+   The merge above computes what the SCORE needs: stance, confidence, intensity.
+   That was sufficient while the merged object only ever fed aggDossierVerdict.
+   The drawer renders these same objects through `stanceChipHTML`, which builds its
+   tooltip from `source`/`note` and its LINK from `url` — so without this, every chip
+   in a drawer would have rendered as a dead span with no source and no note: exactly
+   the thing the drawer exists to show. Caught by the harness comparing a drawer chip
+   against the dossier page's own chip for the same single-entity actor.
+
+   One contributor — the overwhelming majority — passes through verbatim, so a drawer
+   chip is byte-identical to the dossier page's. Several contributors (Germany's two
+   ministries) keep the best-attested contributor's source and say so in the note,
+   because a merged row that silently showed one ministry's link as if it covered both
+   would be worse than one that names what it is.
+   NOTE: these fields are provenance only. Nothing in the scoring path reads them, and
+   nothing in the scoring path may start to — see §166's rule against computing a
+   weight a second time.
+   ------------------------------------------------------------------------- */
+function aggProv(merged, parts, diverged) {
+  const best = parts.slice().sort((a, b) => (b.s.confidence - a.s.confidence) || (b.w - a.w))[0];
+  merged.source = best.s.source;
+  merged.url = best.s.url;
+  if (parts.length === 1) { merged.note = best.s.note; return merged; }
+  const names = parts.map(p => p.name).filter(Boolean).join(' + ');
+  merged.note = (diverged
+      ? `MIXED because the entries diverge (${names}): `
+        + parts.map(p => `${p.name} ${p.s.stance === 'neutral' ? 'MIXED' : p.s.stance.toUpperCase()}`).join(', ') + '. '
+      : `Merged from ${parts.length} entries (${names}). `)
+    + `Source and note shown are the best-attested entry's` + (best.name ? ` (${best.name})` : '') + '.'
+    + (best.s.note ? ' — ' + best.s.note : '');
+  return merged;
+}
+
+function aggDossierVerdict(stances, dossier) {
+  const topics = (dossier.topics || []).filter(t => t.tier !== 0);
+  const covMax = topics.reduce((a, t) => a + AGG.tierWeight[t.tier], 0);
+  let num = 0, den = 0, eff = 0, n = 0, t1 = 0;
+  topics.forEach(t => {
+    const st = stances[t.id]; if (!st) return;
+    const w = AGG.tierWeight[t.tier], r = AGG.confWeight[st.confidence];
+    const dir = st.stance === 'support' ? 1 : st.stance === 'oppose' ? -1 : 0;
+    const mag = st.stance === 'neutral' ? 0 : (st.intensity || 0);
+    num += w * r * dir * mag; den += w * r * 3; eff += w * r; n++; if (t.tier === 1) t1++;
+  });
+  const coverage = covMax ? eff / covMax : 0;
+  const base = { score: den ? num / den : null, coverage, topics: n, tier1: t1, total: topics.length, covMax };
+  if (!den || coverage < AGG.floorCoverage || t1 === 0) return { ...base, assessed: false };
+  const score = num / den;
+  const tone = score >= AGG.leanScore ? 'support' : score <= -AGG.leanScore ? 'oppose' : 'neutral';
+  // The topic chips mark the WEAK end (faded = intensity 1) and leave the normal case
+  // unmarked. The boxes now do the same: `weak` is the marked state, so the vocabulary
+  // reads ALIGNED / WEAKLY ALIGNED at both levels. (Jonas, 3 Aug 2026 — an earlier draft
+  // marked the STRONG end with bold instead, for no reason beyond my own choice.)
+  return { ...base, assessed: true, tone,
+           weak: Math.abs(score) < AGG.strongScore && tone !== 'neutral',
+           dashed: coverage < AGG.solidCoverage };
+}
+
+// A Tier-0 topic gets its own box and needs no separate maths: with one topic the
+// model collapses onto the chip's own rules — colour = stance, bold = intensity >= 2
+// (a single topic scores +-0.33 / 0.67 / 1.00), dashed = confidence 1.
+function aggTopicVerdict(stances, topicId) {
+  const st = stances[topicId];
+  if (!st) return { assessed: false };
+  return { assessed: true, tone: st.stance,
+           weak: st.stance !== 'neutral' && (st.intensity || 0) === 1,
+           dashed: st.confidence <= 1, intensity: st.intensity, confidence: st.confidence };
+}
+
+// One box per tracked dossier, plus one per Tier-0 topic. `entities` is every
+// dossier entity belonging to this actor (usually one; two for Germany).
+// The overview's boxes carry a RELATED but distinct vocabulary from the topic chips, so it
+// needs its own key rather than borrowing theirs. §165 scoped the chip legend to the one
+// view that renders chips, on the rule "show a legend only where its vocabulary appears";
+// the converse of that rule is what obliges this one to exist. Built from real `sdb-agg`
+// spans so it restyles with them and cannot drift (§162), in the same three-group reading
+// order as the chip legend: the states a position can be in, then the modifiers.
+function sdbLegendHTML() {
+  const box = (label, cls) => `<span class="sdb-agg ${cls}">${label}</span>`;
+  return `<div class="legend sdb-legend">
+    ${box('ALIGNED', 'sdb-agg--support')}
+    ${box('OPPOSED', 'sdb-agg--oppose')}
+    ${box('MIXED', 'sdb-agg--neutral')}
+    ${box('NOT YET ASSESSED', 'sdb-agg--none')}
+    <span class="legend-sep"></span>
+    ${box('WEAKLY ALIGNED', 'sdb-agg--support sdb-agg--weak')}
+    ${box('WEAKLY OPPOSED', 'sdb-agg--oppose sdb-agg--weak')}
+    <span class="legend-note">= faded, score below ±0.50 (any stance)</span>
+    <span class="legend-sep"></span>
+    ${box('THIN COVERAGE', 'sdb-agg--support sdb-agg--dashed')}
+    <span class="legend-note">= dashed, 25–50% of the dossier read (any stance)</span>
+  </div>`;
+}
+
+// `nodeId` identifies the card this row belongs to. It is what makes the expansion state
+// per-actor rather than per-dossier, and it is already passed to every sdbCardHTML call
+// for anchoring, so no call site needed a new identifier invented for it.
+/* The chip legend was briefly rendered here as a second line under the box legend, on
+   §171's rule that a legend appears wherever its vocabulary does. Jonas, 3 Aug 2026:
+   "The second legend is now highly confusing. Remove it." He was right, and the rule was
+   applied too literally. The two lines were near-identical — same four state words, same
+   two WEAKLY specimens, same dashed specimen — and differed only in the small print at the
+   end (score below ±0.50 vs intensity 1/3; 25-50% coverage vs confidence 1/3). Two keys
+   that look the same but mean different things are harder to read than one key plus a
+   pointer, because the reader must first notice they are different at all.
+   Replaced by a one-line footnote in each drawer pointing at the dossier page's legend,
+   with the key itself on hover. §175. */
+
+function sdbChipsHTML(entities, nodeId) {
+  const ents = (entities || []).filter(Boolean);
+  const boxes = [], drawers = [];
+  realmDataDossiers(currentRealmId).forEach(d => {
+    const mine = ents.filter(e => (d.institutions || []).some(i => (i.entities || []).indexOf(e) !== -1));
+    const stances = aggMergeStances(mine.length ? mine : ents);
+    const short = (d.shortLabel || d.id || '').toUpperCase();
+
+    // --- the dossier box ---
+    const v = aggDossierVerdict(stances, d);
+    const dKey = nodeId ? `agg:${nodeId}:${d.id}` : null;
+    boxes.push(aggBoxHTML(short, v, d, stances, 'dossier', null, dKey));
+    if (dKey && expandState[dKey] && aggExpandable('dossier', d, stances, null)) {
+      drawers.push(aggDrawerHTML(d, stances, v, 'dossier', null, short, nodeId));
+    }
+
+    // --- one further box per Tier-0 topic, lifted out so it is never averaged in ---
+    (d.topics || []).filter(t => t.tier === 0).forEach(t => {
+      const tv = aggTopicVerdict(stances, t.id);
+      const tKey = nodeId ? `agg:${nodeId}:${d.id}:${t.id}` : null;
+      boxes.push(aggBoxHTML(t.code, tv, d, stances, 'topic', t, tKey));
+      if (tKey && expandState[tKey] && aggExpandable('topic', d, stances, t)) {
+        drawers.push(aggDrawerHTML(d, stances, tv, 'topic', t, t.code, nodeId));
+      }
+    });
+  });
+  // Drawers sit OUTSIDE the chiprow: the row is a wrapping flexbox, and a full-width
+  // block inside it would be laid out as another wrapping item.
+  return `<div class="sdb-chiprow">${boxes.join('')}</div>${drawers.join('')}`;
+}
+
+// A box is expandable when there is something behind it to show: for a dossier box, at
+// least one NON-Tier-0 topic with a stance (Tier-0 is lifted out and has its own box, so
+// it must not be what makes the dossier box look clickable); for a Tier-0 box, that one
+// topic. A box with nothing recorded stays inert rather than opening on an empty drawer.
+function aggExpandable(kind, dossier, stances, topic) {
+  if (kind === 'topic') return !!stances[topic.id];
+  return (dossier.topics || []).some(t => t.tier !== 0 && stances[t.id]);
+}
+
+function aggBoxHTML(label, v, dossier, stances, kind, topic, key) {
+  const cls = ['sdb-agg'];
+  const canOpen = !!key && aggExpandable(kind, dossier, stances, topic);
+  const isOpen = canOpen && !!expandState[key];
+  let tip;
+  if (!v.assessed) {
+    cls.push('sdb-agg--none');
+    if (kind === 'topic') {
+      tip = `${topic.label}\nNOT YET ASSESSED — no position recorded for this actor on this topic.`;
+    } else {
+      // Jonas, 3 Aug 2026: an unassessed box must still say HOW FAR from assessed it is.
+      const pct = Math.round(100 * v.coverage), need = Math.round(100 * AGG.floorCoverage);
+      const missing = v.tier1 === 0 ? 'no Tier-1 topic recorded yet' : `${need - pct} percentage points of coverage short`;
+      tip = `${dossier.title || dossier.id} — overall alignment with E.ON\n`
+          + `NOT YET ASSESSED (${missing}).\n`
+          + `Coverage ${pct}% of ${need}% needed · ${v.topics} of ${v.total} topics recorded, ${v.tier1} of them Tier-1.\n`
+          + (v.score === null ? 'No stance recorded yet.' : `Provisional score on what is recorded: ${v.score >= 0 ? '+' : ''}${v.score.toFixed(2)}.`)
+          + `\nA verdict needs at least ${need}% coverage and one Tier-1 topic.`;
+    }
+    return aggBoxSpan(cls, tip, label, canOpen, isOpen, key);
+  }
+  cls.push('sdb-agg--' + v.tone);
+  if (v.weak) cls.push('sdb-agg--weak');
+  if (v.dashed) cls.push('sdb-agg--dashed');
+  const base = v.tone === 'support' ? 'ALIGNED' : v.tone === 'oppose' ? 'OPPOSED' : 'MIXED';
+  const word = (v.weak ? 'WEAKLY ' : '') + base;
+  if (kind === 'topic') {
+    tip = `${topic.label}\n${word} · intensity ${v.intensity ?? '—'}/3 · confidence ${v.confidence}/3`
+        + `\n${v.dashed ? 'Dashed: rests on an inferred position (confidence 1/3).' : 'Solid: the actor is on record.'}`;
+  } else {
+    tip = `${dossier.title || dossier.id} — overall alignment with E.ON\n`
+        + `${word} · score ${v.score >= 0 ? '+' : ''}${v.score.toFixed(2)} on -1…+1\n`
+        + `Coverage ${Math.round(100 * v.coverage)}% · ${v.topics} of ${v.total} topics recorded, ${v.tier1} Tier-1.\n`
+        + (v.dashed
+            ? `Dashed: below ${Math.round(100 * AGG.solidCoverage)}% coverage — direction is indicative, not settled.`
+            : 'Solid: broad enough coverage to rely on.');
+  }
+  return aggBoxSpan(cls, tip, label, canOpen, isOpen, key);
+}
+
+// Single place that turns a box into markup, so the assessed and unassessed branches
+// cannot acquire different click behaviour — the failure mode §172 warns about, where
+// each half is coherent alone and nothing forces the comparison.
+function aggBoxSpan(cls, tip, label, canOpen, isOpen, key) {
+  let text = sdbEscape(label);
+  if (canOpen) {
+    cls.push('sdb-agg--btn');
+    // Same glyphs as every other expander in the tool (§130), so a caret means the same
+    // thing at every level rather than this being a second, private convention.
+    text = (isOpen ? '\u25BE ' : '\u25B8 ') + text;
+    tip += isOpen ? '\n\nClick to hide the underlying positions.'
+                  : '\n\nClick to show the underlying positions.';
+  }
+  const onclick = canOpen ? ` onclick="toggleExpand('${key}'); renderStakeholderDbView();"` : '';
+  return `<span class="${cls.join(' ')}" title="${sdbEscape(tip)}"${onclick}>${text}</span>`;
+}
+
+/* ---------------------------------------------------------------------------
+   THE DRAWER (§174) — Jonas, 3 Aug 2026
+   "I want these sub-issue boxes to basically appear" — so the drawer is not a new
+   view. It is the dossier's OWN stance row, rendered a second time from the same
+   `stanceChipHTML`, against the merged stances the box's verdict was computed from.
+   Two deliberate rules:
+   - Tier-0 topics are OMITTED from a dossier drawer. They are lifted out of the
+     dossier's score and carry their own box two centimetres above; showing the chip
+     as well would display once what is scored once, twice. Display now matches the
+     scoring rule exactly.
+   - A Tier-0 box's own drawer shows PROSE, not a chip. With one topic a chip drawer
+     would merely echo the box that was just clicked; the source, date and note are
+     the only things it can add, so they are what it shows.
+   ------------------------------------------------------------------------- */
+/* A single stance rendered as prose. Used by BOTH a Tier-0 box's drawer and an expanded
+   sub-issue chip inside a dossier drawer, so the two cannot describe the same object in two
+   different ways — the §172 failure mode, where each piece is coherent alone and nothing
+   forces the comparison. (§175) */
+function stanceDetailHTML(topic, st) {
+  const weak = st.stance !== 'neutral' && (st.intensity || 0) === 1;
+  const word = st.stance === 'neutral' ? 'MIXED'
+             : ((weak ? 'WEAKLY ' : '') + (st.stance === 'support' ? 'ALIGNED' : 'OPPOSED'));
+  const intClause = (st.stance !== 'neutral' && st.intensity != null) ? ` \u00B7 intensity ${st.intensity}/3` : '';
+  const src = sourceLabel(st).replace(/^SOURCE:\s*/, '');
+  return {
+    head: `${sdbEscape(topic.label)} \u2014 ${word}${intClause} \u00B7 confidence ${st.confidence}/3`,
+    body: `<div class="sdb-drawer-detail">`
+        + `<div><b>Source</b> \u00B7 ${st.url ? `<a href="${st.url}" target="_blank" rel="noopener">${sdbEscape(src)} \u2197</a>` : sdbEscape(src)}</div>`
+        + (st.note ? `<div><b>Note</b> \u00B7 ${sdbEscape(st.note)}</div>` : '')
+        + `</div>`
+  };
+}
+
+// The chip key, restated on hover so the footnote answers itself without a trip to the
+// dossier page. Built from the same words the real legend uses (§162's intent, in text).
+const SDB_CHIP_KEY = 'Chip colour = stance: green ALIGNED, red OPPOSED, grey MIXED, plain NOT YET ASSESSED.\n'
+  + 'Faded = weak (intensity 1/3, any stance).\n'
+  + 'Dashed border = low confidence (1/3, any stance).\n'
+  + '\u2197 opens the source; \u25B8 opens the source and note here.\n\n'
+  + 'The full legend, in live specimens, is on the dossier page.';
+
+function aggDrawerHTML(dossier, stances, v, kind, topic, label, nodeId) {
+  const title = dossier.title || dossier.id;
+  let head, body;
+
+  if (kind === 'topic') {
+    // The stored keys are support/oppose/neutral; the vocabulary the user reads is
+    // ALIGNED/OPPOSED/MIXED, everywhere, without exception (§172). An earlier draft printed
+    // the raw key and would have put "SUPPORT" in the one place the tool has never used the
+    // word — caught by the harness printing the drawer head.
+    const d = stanceDetailHTML(topic, stances[topic.id]);
+    head = d.head; body = d.body;
+  } else {
+    // Same non-Tier-0 topic set the verdict was computed over — one definition, used twice.
+    const topics = (dossier.topics || []).filter(t => t.tier !== 0);
+    head = v.assessed
+      ? `${sdbEscape(label)} \u2014 ${(v.weak ? 'WEAKLY ' : '') + (v.tone === 'support' ? 'ALIGNED' : v.tone === 'oppose' ? 'OPPOSED' : 'MIXED')}`
+        + ` \u00B7 score ${v.score >= 0 ? '+' : ''}${v.score.toFixed(2)}`
+        + ` \u00B7 coverage ${Math.round(100 * v.coverage)}% (${v.topics} of ${v.total} topics, ${v.tier1} Tier-1)`
+      : `${sdbEscape(label)} \u2014 NOT YET ASSESSED`
+        + ` \u00B7 coverage ${Math.round(100 * v.coverage)}% of ${Math.round(100 * AGG.floorCoverage)}% needed`
+        + ` (${v.topics} of ${v.total} topics, ${v.tier1} Tier-1)`;
+    // Each sub-issue chip is itself expandable (Jonas, 3 Aug 2026) — the same move one
+    // level down, so the Tier-0 box and a Tier-1/2/3 chip both open onto the same prose.
+    // Chips with nothing recorded stay inert, exactly as an empty box does.
+    const subs = [];
+    body = `<div class="stance-row">`
+         + topics.map(t => {
+             const st = stances[t.id];
+             const key = (nodeId && st) ? `aggt:${nodeId}:${dossier.id}:${t.id}` : null;
+             if (key && expandState[key]) {
+               const d = stanceDetailHTML(t, st);
+               subs.push(`<div class="sdb-subbox"><div class="sdb-drawer-head">${d.head}</div>${d.body}</div>`);
+             }
+             return stanceChipHTML(t.id, stances, dossier, key);
+           }).join('')
+         + `</div>` + subs.join('');
+  }
+
+  const foot = `<div class="sdb-drawer-foot">`
+             + `<a onclick="sdbOpenInDossier('${dossier.id}'${nodeId ? `, '${nodeId}'` : ''});">`
+             + `Open in ${sdbEscape(label)} dossier \u2197</a>`
+             + `<span class="sdb-drawer-note" title="${sdbEscape(SDB_CHIP_KEY)}">* legend on the ${sdbEscape(label)} dossier page</span>`
+             + `</div>`;
+  return `<div class="sdb-drawer"><div class="sdb-drawer-head">${head}</div>${body}${foot}</div>`;
+}
+
+// The drawer answers "what are their positions"; the dossier page still owns the reaction
+// cards, the background and the milestones. One click closes that loop rather than
+// leaving the overview a dead end. Degrades quietly: sdbJumpTo returns if the id is not
+// in the target index, so the view still opens on the right dossier.
+function sdbOpenInDossier(dossierId, nodeId) {
+  if (!DOSSIERS[dossierId]) return;
+  realmSection = 'dossier';
+  currentDossierId = dossierId;
+  populateDossierSelect();
+  renderHeader();
+  populateTopicSelect();
+  populateTopicKey();
+  setActiveView('institution');
+  if (nodeId) sdbJumpTo(nodeId, 'inst');
+}
+
+// Every expansion key belonging to the Stakeholder Overview, by prefix: `sdb-` for the
+// group/delegation/DG/Member-State expanders, `agg:` for a dossier or Tier-0 box drawer,
+// `aggt:` for an expanded sub-issue chip inside one. Deliberately prefix-based rather than a
+// list, so an expander added later is cleared without anyone remembering to add it here.
+function sdbResetExpansion() {
+  Object.keys(expandState).forEach(k => {
+    if (k.indexOf('sdb-') === 0 || k.indexOf('agg:') === 0 || k.indexOf('aggt:') === 0) delete expandState[k];
+  });
 }
 
 function sdbToggleHTML(key, openLabel, closedLabel, nested) {
@@ -2455,10 +2911,10 @@ function sortMepsForDossier(meps) {
 // How many delegations a group shows before the "further delegations" expander.
 const SDB_DELEGATIONS_SHOWN = 10;
 
-function sdbCardHTML(title, meta, bodyHTML, cls, nodeId) {
+function sdbCardHTML(title, meta, bodyHTML, cls, nodeId, entities) {
   return `<div class="sdb-card${cls ? ' ' + cls : ''}"${nodeId ? ` id="sdb-node-${nodeId}"` : ''}>
     <div class="sdb-card-head"><span class="sdb-card-name">${title}</span>${meta ? `<span class="sdb-card-meta">${meta}</span>` : ''}</div>
-    ${sdbChipsHTML()}
+    ${sdbChipsHTML(entities, nodeId)}
     ${bodyHTML || ''}
   </div>`;
 }
@@ -2725,17 +3181,17 @@ function renderStakeholderDbView() {
           const meps = sortMepsForRealm(all.filter(m => m.parentId === dl.id));
           const dKey = `sdb-${dl.id}`;
           const inner = expandState[dKey]
-            ? meps.map(m => sdbCardHTML(m.name, m.country || '', '', 'sdb-card--mep', m.id)).join('')
+            ? meps.map(m => sdbCardHTML(m.name, m.country || '', '', 'sdb-card--mep', m.id, [m])).join('')
             : '';
           return sdbCardHTML(dl.name, `${meps.length} MEPs`,
             (meps.length ? sdbToggleHTML(dKey, `Hide ${meps.length} MEPs`, `Show ${meps.length} MEPs`, true) : '') + inner,
-            'sdb-card--deleg', dl.id);
+            'sdb-card--deleg', dl.id, [dl]);
         }).join('');
         if (rest.length) body += sdbToggleHTML(mKey, `Hide ${rest.length} further delegations`, `Show ${rest.length} further delegations`, true);
       }
       return sdbCardHTML(g.name, `${g.weight} seats`,
         (delegs.length ? sdbToggleHTML(gKey, `Hide ${delegs.length} national delegations`, `Show ${delegs.length} national delegations`) : '') + body,
-        'sdb-card--group', g.id);
+        'sdb-card--group', g.id, [g]);
     };
     const sideKey = 'sdb-ep-side';
     epHTML = mainGroups.map(g => groupCard(g, false)).join('');
@@ -2776,7 +3232,7 @@ function renderStakeholderDbView() {
     const restRows = rows.filter(r => !r.key).sort((a, b) => b.weight - a.weight);
     const msKey = 'sdb-ms-rest';
     const msOpen = !!expandState[msKey];
-    const card = r => sdbCardHTML(r.country + govSuffixHTML({ mandate: r.mandate }), `${r.weight.toFixed(1)}m`, '', 'sdb-card--ms', 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-'));
+    const card = r => sdbCardHTML(r.country + govSuffixHTML({ mandate: r.mandate }), `${r.weight.toFixed(1)}m`, '', 'sdb-card--ms', 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-'), byCountry[r.country]);
     keyRows.forEach(r => sdbIndexAdd({ id: 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-') }, r.country, `Council · Member State · ${r.weight.toFixed(1)}m`, 'council', []));
     restRows.forEach(r => sdbIndexAdd({ id: 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-') }, r.country, `Council · Member State · ${r.weight.toFixed(1)}m`, 'council', [msKey]));
     coHTML = keyRows.map(card).join('');
@@ -2798,7 +3254,21 @@ function renderStakeholderDbView() {
   let cmHTML = '';
   if (dgs) {
     const dgId = dg => 'dg-' + foldText(dg.code).replace(/[^a-z0-9]+/g, '-');
-    const dgCard = dg => sdbCardHTML(dg.code, dg.name, '', 'sdb-card--dg', dgId(dg));
+    // The realm DG registry and a dossier's Commission entities are different lists:
+    // the registry holds every policy DG, a dossier tracks the handful working the file.
+    // Match by code/name so DG CLIMA picks up its ETS1 stances; DGs with no dossier
+    // entity (and Cabinet Hoekstra, which is not a DG at all) simply show as unassessed.
+    const dgEntities = dg => {
+      const out = [];
+      realmDataDossiers(currentRealmId).forEach(d => (d.institutions || []).forEach(inst => {
+        if (inst.id !== 'comm') return;
+        (inst.entities || []).forEach(e => {
+          if (foldText(e.name) === foldText(dg.code) || foldText(e.name) === foldText(dg.name)) out.push(e);
+        });
+      }));
+      return out;
+    };
+    const dgCard = dg => sdbCardHTML(dg.code, dg.name, '', 'sdb-card--dg', dgId(dg), dgEntities(dg));
     cmHTML = dgs.priority.map(dgCard).join('');
     const eKey = 'sdb-dg-econ', rKey = 'sdb-dg-rest';
     dgs.priority.forEach(dg => sdbIndexAdd({ id: dgId(dg) }, `${dg.code} — ${dg.name}`, 'European Commission · Directorate-General', 'dg', []));
@@ -2820,11 +3290,12 @@ function renderStakeholderDbView() {
   container.innerHTML = `
     <div class="sdb-intro">Every institutional stakeholder in <strong>${realm.label}</strong>, pooled across all dossiers in this realm and listed once.
     Parliament and Council are derived live from the dossiers, so they stay in step automatically; the Commission's Directorates-General are held at realm level, since the full apparatus belongs to EU policy as such rather than to any single file.
-    Positions and alignment charts are intentionally blank for now — how a stakeholder's stance should be expressed across several dossiers at once is still to be decided.${notActive > 0 ? ` (${notActive} further dossier${notActive > 1 ? 's' : ''} in this realm not active yet.)` : ''}</div>
+    Each actor carries one box per dossier plus one per Tier-0 topic. The boxes are computed live from that dossier's own stance data (§169), so they are never out of date — hover any box, including a blank one, for the score, the coverage and how far short of a verdict it is. The institution-wide alignment charts above each column are still to be modelled.${notActive > 0 ? ` (${notActive} further dossier${notActive > 1 ? 's' : ''} in this realm not active yet.)` : ''}</div>
     ${sdbSearchBoxHTML()}
+    ${sdbLegendHTML()}
     <div class="sdb-cols">
       <div class="sdb-col">
-        <div class="sdb-col-head"><span>European Parliament${mandateTagHTML(epMandate, '')}</span><span class="sdb-col-count">${epCount} MEPs</span></div>
+        <div class="sdb-col-head"><span>European Parliament${mandateTagHTML(epMandate)}</span><span class="sdb-col-count">${epCount} MEPs</span></div>
         ${sdbChartBoxHTML('European Parliament')}
         ${epHTML || '<div class="sdb-empty">No parliamentary data in this realm yet.</div>'}
       </div>
@@ -2834,7 +3305,7 @@ function renderStakeholderDbView() {
         ${coHTML || '<div class="sdb-empty">No Council data in this realm yet.</div>'}
       </div>
       <div class="sdb-col">
-        <div class="sdb-col-head"><span>European Commission${mandateTagHTML(commMandate, '')}</span><span class="sdb-col-count">${dgCount} DGs</span></div>
+        <div class="sdb-col-head"><span>European Commission${mandateTagHTML(commMandate)}</span><span class="sdb-col-count">${dgCount} DGs</span></div>
         ${sdbChartBoxHTML('European Commission')}
         ${cmHTML || '<div class="sdb-empty">No Commission registry for this realm yet.</div>'}
       </div>
@@ -2849,6 +3320,13 @@ function setActiveView(view) {
   // The realm-wide stakeholder database is not a per-dossier view: it replaces
   // the whole view area and the view-toggle/topic-select do not apply to it.
   if (realmSection === 'stakeholders' || realmSection === 'archive') {
+    // Jonas, 3 Aug 2026: "whenever I click away from this stakeholder overview page and then
+    // go back, I dont want all boxes to remain open — so the site is clean whenever you click
+    // on it." setActiveView is the right hook precisely because a toggle does NOT call it:
+    // toggles call renderStakeholderDbView() directly, so only a genuine navigation resets.
+    // Search-jump expansion also survives, since sdbJumpTo re-renders without coming through
+    // here. (§175)
+    if (realmSection === 'stakeholders') sdbResetExpansion();
     const target = realmSection === 'stakeholders' ? 'stakeholderDbView' : 'archiveView';
     ids.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== target));
     document.querySelector('.view-toggle').classList.add('hidden');
@@ -18395,6 +18873,8 @@ const REALMS = {
    ------------------------------------------------------------------------- */
 DOSSIERS.ets1.realmId = 'eu';
 DOSSIERS.ets1.proposalDate = '2026-07-17';
+// Caption shown on the dossier's box in the realm Stakeholder Overview (§169).
+DOSSIERS.ets1.shortLabel = 'ETS1';
 DOSSIERS.ets1.status = 'active';
 
 /* ---------------------------------------------------------------------------
