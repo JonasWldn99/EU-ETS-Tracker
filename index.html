@@ -90,6 +90,46 @@
 
   /* --- legacy cross-dossier table styles (kept: helpers may return once positions are modelled) --- */
   .sdb-intro { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 14px; }
+
+    /* --- stakeholder search (Jonas, 3 Aug 2026) --- */
+    .sdb-search { position: relative; margin-bottom: 14px; max-width: 520px; }
+    .sdb-search-input {
+      width: 100%; box-sizing: border-box;
+      font-family: var(--font-body); font-size: 12px; color: var(--text-primary);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 11px; outline: none;
+    }
+    .sdb-search-input::placeholder { color: var(--text-tertiary); }
+    .sdb-search-input:focus { border-color: var(--text-tertiary); }
+    /* The dropdown floats above the columns so opening it never reflows the grid. */
+    .sdb-search-results {
+      position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+      max-height: 320px; overflow-y: auto; padding: 4px;
+    }
+    .sdb-search-hit {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+    }
+    .sdb-search-hit:hover, .sdb-search-hit.is-active { background: var(--surface-nested); }
+    .sdb-hit-label { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+    .sdb-hit-sub {
+      font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary);
+      white-space: nowrap; text-align: right;
+    }
+    .sdb-mark { background: transparent; color: var(--text-primary); font-weight: 700; }
+    .sdb-search-empty, .sdb-search-more {
+      font-size: 11px; color: var(--text-tertiary); padding: 7px 9px; font-style: italic;
+    }
+    .sdb-search-more { border-top: 1px solid var(--border); margin-top: 3px; }
+    /* Flash rather than a persistent selection: the highlight answers "where is it"
+       and then gets out of the way, so the view is never left in a special state. */
+    @keyframes sdbHitFlash {
+      0%   { background: rgba(127,176,105,0.30); }
+      100% { background: transparent; }
+    }
+    .sdb-hit-flash { animation: sdbHitFlash 2.2s ease-out; }
   .sdb-group-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   table.sdb-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
   table.sdb-table th { text-align: left; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: bottom; }
@@ -890,12 +930,7 @@ function memberCardHTML(entity, depth, allEntities) {
   let expandHTML = '';
   let nestedHTML = '';
   if (entity.isDelegation && allEntities) {
-    const meps = allEntities.filter(c => c.parentId === entity.id && !c.hideFromList)
-      .sort((a, b) => {
-        const rankA = a.isKeyMEP ? -1 : (a.sortRank ?? 2);
-        const rankB = b.isKeyMEP ? -1 : (b.sortRank ?? 2);
-        return rankA - rankB;
-      });
+    const meps = sortMepsForDossier(allEntities.filter(c => c.parentId === entity.id && !c.hideFromList));
     if (meps.length > 0) {
       const isExpanded = !!expandState[entity.id];
       expandHTML = `<button class="expand-toggle" onclick="toggleExpand('${entity.id}')">${isExpanded ? '▾ Hide' : '▸ Show'} ${meps.length} MEPs</button>`;
@@ -957,8 +992,11 @@ function entityCardHTML(entity, allEntities, depth) {
       // individually-tracked Member States; the rest are one further click away, so the first
       // click stays readable.
       const isExpanded = !!expandState[entity.id];
-      const primaryDelegs = delegations.filter(d => EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country));
-      const secondaryDelegs = delegations.filter(d => !EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country));
+      // Within each stage, largest delegation first (Jonas, 3 Aug 2026). The staging itself
+      // stays keyed on the dossier's tracked Member States, which is correct HERE — this is
+      // the per-dossier view, so privileging the states the dossier tracks is the point.
+      const primaryDelegs = sortDelegationsBySize(delegations.filter(d => EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country)), allEntities);
+      const secondaryDelegs = sortDelegationsBySize(delegations.filter(d => !EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country)), allEntities);
       // If a group happens to hold no seats in any tracked country, a first stage would be empty —
       // show everything at once rather than an expander that reveals nothing.
       const stagedDelegs = primaryDelegs.length ? primaryDelegs : delegations;
@@ -2133,12 +2171,234 @@ function sdbToggleHTML(key, openLabel, closedLabel, nested) {
   return `<div class="cd-expand-toggle${nested ? ' expand-toggle--nested' : ''}" onclick="toggleExpand('${key}'); renderStakeholderDbView();">${open ? '▾ ' + openLabel : '▸ ' + closedLabel}</div>`;
 }
 
-function sdbCardHTML(title, meta, bodyHTML, cls) {
-  return `<div class="sdb-card${cls ? ' ' + cls : ''}">
+/* ---------------------------------------------------------------------------
+   ORDERING HELPERS (Jonas, 3 Aug 2026)
+   Until now neither national delegations nor the MEPs inside them were sorted at
+   all — both lists were emitted in raw data order, which merely LOOKED alphabetical
+   because the roster is harvested alphabetically. Nothing enforced it, so a newly
+   appended MEP would have landed at the bottom, and the realm overview and the
+   per-dossier "By Institution" view had drifted into disagreeing with each other.
+   These helpers make both orders explicit and shared, so the two views cannot
+   diverge again.
+   ------------------------------------------------------------------------- */
+
+// Fold diacritics so "cernilec" matches "ČERNILEC" and "gonzalez" matches "González".
+function foldText(v) {
+  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+// Surname extraction. The roster stores names as "Alexandra MEHNERT" — given name(s)
+// in title case, family name in caps — but dossier-authored entries use ordinary case
+// ("Peter Liese"), so the caps heuristic alone is not enough. Take the run of trailing
+// ALL-CAPS tokens when present (handles "Zala ČERNILEC TOMAŠIČ"), otherwise fall back
+// to the last token.
+function personSurname(name) {
+  const parts = String(name || '').trim().split(/\s+/);
+  if (!parts.length) return '';
+  const caps = [];
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    if (p.length > 1 && p === p.toLocaleUpperCase() && p !== p.toLocaleLowerCase()) caps.unshift(p);
+    else break;
+  }
+  return caps.length ? caps.join(' ') : parts[parts.length - 1];
+}
+
+// Surname A-Z, given name as tiebreak. Diacritic-folded so Ö sorts with O rather than
+// after Z, which is what a reader scanning the list expects.
+function compareBySurname(a, b) {
+  const sa = foldText(personSurname(a.name)), sb = foldText(personSurname(b.name));
+  if (sa !== sb) return sa < sb ? -1 : 1;
+  const fa = foldText(a.name), fb = foldText(b.name);
+  return fa === fb ? 0 : (fa < fb ? -1 : 1);
+}
+
+// Delegations rank by headcount, largest first, with the country name as a stable
+// tiebreak (Greece / Hungary / Portugal all hold 7 EPP seats).
+function sortDelegationsBySize(delegs, allEntities) {
+  const size = d => allEntities.filter(m => m.parentId === d.id).length;
+  return [...delegs].sort((a, b) => (size(b) - size(a)) || String(a.name).localeCompare(String(b.name)));
+}
+
+// Realm-level MEP order. `isKeyMEP` is a DOSSIER flag (an MEP is key ON A FILE), so it
+// deliberately does NOT hoist here — the cross-dossier overview has no key-MEP concept
+// yet, and inheriting ETS1's would leak a dossier notion into the realm view exactly the
+// way the tracked-country staging did. The hook is kept so that if realm-level key
+// stakeholders are ever defined, this is the one place to wire them in. (Jonas, 3 Aug 2026.)
+function sortMepsForRealm(meps) {
+  return [...meps].sort(compareBySurname);
+}
+
+// Per-dossier MEP order: key MEPs first, then sortRank, then surname. The first two keys
+// are unchanged; the surname tiebreak replaces what used to be incidental array order.
+function sortMepsForDossier(meps) {
+  return [...meps].sort((a, b) => {
+    const ra = a.isKeyMEP ? -1 : (a.sortRank ?? 2);
+    const rb = b.isKeyMEP ? -1 : (b.sortRank ?? 2);
+    return (ra - rb) || compareBySurname(a, b);
+  });
+}
+
+// How many delegations a group shows before the "further delegations" expander.
+const SDB_DELEGATIONS_SHOWN = 10;
+
+function sdbCardHTML(title, meta, bodyHTML, cls, nodeId) {
+  return `<div class="sdb-card${cls ? ' ' + cls : ''}"${nodeId ? ` id="sdb-node-${nodeId}"` : ''}>
     <div class="sdb-card-head"><span class="sdb-card-name">${title}</span>${meta ? `<span class="sdb-card-meta">${meta}</span>` : ''}</div>
     ${sdbChipsHTML()}
     ${bodyHTML || ''}
   </div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   STAKEHOLDER SEARCH (Jonas, 3 Aug 2026)
+   719 MEPs plus the Council and DG registries are too many to navigate by
+   expanding. This is a typeahead over every stakeholder in the realm: type two
+   or more characters, pick a suggestion, and the view opens the path to that
+   person or body, scrolls to them and highlights them briefly — so the answer
+   arrives IN CONTEXT (which group, which delegation) rather than as a flat list.
+
+   Design notes worth keeping:
+   - 749 records is small enough that a linear scan per keystroke is well under a
+     millisecond. No index, no library, no CDN dependency, nothing to keep in sync.
+   - The index is filled by renderStakeholderDbView() as it decides the staging,
+     never by a parallel re-derivation of it (§142.3: a second computation of the
+     same quantity hides discrepancies rather than catching them).
+   - Matching is diacritic-folded, so "cernilec" finds ČERNILEC and "oko" finds
+     Öko — a search box that requires the user to type diacritics correctly is a
+     search box for people who already know the answer.
+   ------------------------------------------------------------------------- */
+
+let _sdbIndex = [];
+let _sdbQuery = '';
+let _sdbActive = -1;
+const SDB_MAX_SUGGESTIONS = 8;
+
+function sdbIndexReset() { _sdbIndex = []; }
+
+// path = expandState keys that must be opened for this node to become visible.
+function sdbIndexAdd(entity, label, sub, kind, path) {
+  if (!entity || !entity.id) return;
+  _sdbIndex.push({
+    id: entity.id, label, sub, kind,
+    path: path || [],
+    fLabel: foldText(label),
+    fSurname: foldText(personSurname(label))
+  });
+}
+
+// Rank: surname prefix beats given-name prefix beats any substring. Within a rank,
+// people before containers before institutions, then alphabetically by surname —
+// so typing "lie" puts Peter LIESE above a delegation whose name merely contains it.
+const SDB_KIND_RANK = { mep: 0, council: 1, dg: 2, delegation: 3, group: 4 };
+function sdbSearch(query) {
+  const q = foldText(query).trim();
+  if (q.length < 2) return [];
+  const hits = [];
+  for (const r of _sdbIndex) {
+    let score;
+    if (r.fSurname.startsWith(q)) score = 0;
+    else if (r.fLabel.startsWith(q)) score = 1;
+    else if (r.fLabel.includes(q)) score = 2;
+    else if (foldText(r.sub).includes(q)) score = 3;
+    else continue;
+    hits.push({ r, score });
+  }
+  hits.sort((a, b) =>
+    (a.score - b.score) ||
+    ((SDB_KIND_RANK[a.r.kind] ?? 9) - (SDB_KIND_RANK[b.r.kind] ?? 9)) ||
+    (a.r.fSurname < b.r.fSurname ? -1 : a.r.fSurname > b.r.fSurname ? 1 : 0));
+  return hits.map(h => h.r);
+}
+
+function sdbEscape(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Bold the matched run. Built on the FOLDED string so the highlight lands correctly
+// on a name with diacritics, then sliced out of the original so the accents survive.
+function sdbMarkHTML(label, query) {
+  const q = foldText(query).trim();
+  const i = q ? foldText(label).indexOf(q) : -1;
+  if (i < 0) return sdbEscape(label);
+  return sdbEscape(label.slice(0, i)) + '<mark class="sdb-mark">' +
+         sdbEscape(label.slice(i, i + q.length)) + '</mark>' + sdbEscape(label.slice(i + q.length));
+}
+
+function sdbSearchBoxHTML() {
+  return `<div class="sdb-search">
+    <input id="sdbSearchInput" class="sdb-search-input" type="search" autocomplete="off" spellcheck="false"
+      placeholder="Search any stakeholder — MEP, Member State or DG (min. 2 letters)"
+      value="${sdbEscape(_sdbQuery)}"
+      oninput="sdbOnInput(this.value)" onkeydown="sdbOnKeyDown(event)">
+    <div id="sdbSearchResults" class="sdb-search-results" hidden></div>
+  </div>`;
+}
+
+function sdbRenderSuggestions() {
+  const box = document.getElementById('sdbSearchResults');
+  if (!box) return;
+  const hits = sdbSearch(_sdbQuery);
+  if (!hits.length) {
+    box.hidden = true;
+    box.innerHTML = '';
+    if (foldText(_sdbQuery).trim().length >= 2) {
+      box.hidden = false;
+      box.innerHTML = `<div class="sdb-search-empty">No stakeholder matches “${sdbEscape(_sdbQuery)}”.</div>`;
+    }
+    return;
+  }
+  const shown = hits.slice(0, SDB_MAX_SUGGESTIONS);
+  if (_sdbActive >= shown.length) _sdbActive = shown.length - 1;
+  box.hidden = false;
+  box.innerHTML = shown.map((r, i) => `<div class="sdb-search-hit${i === _sdbActive ? ' is-active' : ''}"
+      onmousedown="event.preventDefault(); sdbJumpTo('${sdbEscape(r.id)}')">
+      <span class="sdb-hit-label">${sdbMarkHTML(r.label, _sdbQuery)}</span>
+      <span class="sdb-hit-sub">${sdbEscape(r.sub)}</span>
+    </div>`).join('') +
+    (hits.length > shown.length
+      ? `<div class="sdb-search-more">${hits.length - shown.length} further match${hits.length - shown.length > 1 ? 'es' : ''} — keep typing to narrow</div>`
+      : '');
+}
+
+function sdbOnInput(v) {
+  _sdbQuery = v;
+  _sdbActive = -1;
+  sdbRenderSuggestions();
+}
+
+function sdbOnKeyDown(ev) {
+  const hits = sdbSearch(_sdbQuery).slice(0, SDB_MAX_SUGGESTIONS);
+  if (ev.key === 'ArrowDown' && hits.length) {
+    ev.preventDefault(); _sdbActive = (_sdbActive + 1) % hits.length; sdbRenderSuggestions();
+  } else if (ev.key === 'ArrowUp' && hits.length) {
+    ev.preventDefault(); _sdbActive = (_sdbActive <= 0 ? hits.length : _sdbActive) - 1; sdbRenderSuggestions();
+  } else if (ev.key === 'Enter' && hits.length) {
+    ev.preventDefault(); sdbJumpTo(hits[_sdbActive >= 0 ? _sdbActive : 0].id);
+  } else if (ev.key === 'Escape') {
+    _sdbQuery = ''; _sdbActive = -1;
+    const el = document.getElementById('sdbSearchInput'); if (el) el.value = '';
+    sdbRenderSuggestions();
+  }
+}
+
+// Open every ancestor on the record's path, re-render, then scroll to the card and
+// flash it. Re-rendering rebuilds the index, so the lookup is repeated afterwards
+// rather than held across the render — ids are stable, DOM nodes are not.
+function sdbJumpTo(id) {
+  const rec = _sdbIndex.find(r => r.id === id);
+  if (!rec) return;
+  rec.path.forEach(k => { expandState[k] = true; });
+  renderStakeholderDbView();
+  const box = document.getElementById('sdbSearchResults');
+  if (box) { box.hidden = true; box.innerHTML = ''; }
+  _sdbActive = -1;
+  const node = document.getElementById('sdb-node-' + id);
+  if (!node) return;
+  node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  node.classList.add('sdb-hit-flash');
+  setTimeout(() => node.classList.remove('sdb-hit-flash'), 2200);
 }
 
 /* ---------------------------------------------------------------------------
@@ -2163,6 +2423,8 @@ function renderStakeholderDbView() {
     return;
   }
 
+  sdbIndexReset();
+
   // Pool every institution's entities across the realm's dossiers, de-duplicated by entity id so a
   // stakeholder appearing in several dossiers is listed exactly once.
   const pool = {};
@@ -2181,34 +2443,53 @@ function renderStakeholderDbView() {
     // but not shown by default.
     const mainGroups = groups.filter(g => !EP_SECONDARY_GROUP_IDS.has(g.id));
     const sideGroups = groups.filter(g => EP_SECONDARY_GROUP_IDS.has(g.id));
-    const groupCard = g => {
-      const delegs = all.filter(e => e.parentId === g.id && e.isDelegation);
-      const prim = delegs.filter(x => EP_PRIMARY_DELEGATION_COUNTRIES.has(x.country));
-      const staged = prim.length ? prim : delegs;
-      const rest = prim.length ? delegs.filter(x => !EP_PRIMARY_DELEGATION_COUNTRIES.has(x.country)) : [];
+    const groupCard = (g, isSideGroup) => {
+      // Staging by SIZE, not by the dossier's tracked-country list (Jonas, 3 Aug 2026).
+      // EP_PRIMARY_DELEGATION_COUNTRIES is ETS1's set of tracked Member States; using it in a
+      // realm-level view pooled across every dossier privileged one file's priorities in a
+      // place that is supposed to be file-agnostic. Largest ten first, remainder one click away.
+      const delegs = sortDelegationsBySize(all.filter(e => e.parentId === g.id && e.isDelegation), all);
+      const staged = delegs.slice(0, SDB_DELEGATIONS_SHOWN);
+      const rest = delegs.slice(SDB_DELEGATIONS_SHOWN);
       const gKey = `sdb-${g.id}`, mKey = `sdb-${g.id}-more`;
+      const sidePath = isSideGroup ? ['sdb-ep-side'] : [];
+      sdbIndexAdd(g, g.name, `EP political group · ${g.weight} seats`, 'group', sidePath);
+
+      // The search index is populated HERE, in the same pass that decides the staging, and for
+      // every delegation and MEP regardless of whether it is currently expanded. Recomputing the
+      // staging separately for the index would be a second independent computation of the same
+      // thing, which does not double-check the first — it hides the discrepancy (§142.3).
       let body = '';
+      const visible = expandState[mKey] ? [...staged, ...rest] : staged;
+      delegs.forEach(dl => {
+        const meps = sortMepsForRealm(all.filter(m => m.parentId === dl.id));
+        const inStaged = staged.indexOf(dl) !== -1;
+        const delegPath = [...sidePath, gKey, ...(inStaged ? [] : [mKey])];
+        sdbIndexAdd(dl, dl.name, `${g.name} · ${meps.length} MEPs`, 'delegation', delegPath);
+        meps.forEach(m => sdbIndexAdd(m, m.name, `${g.name} · ${m.country || ''}`, 'mep', [...delegPath, `sdb-${dl.id}`]));
+      });
+
       if (expandState[gKey]) {
-        const visible = expandState[mKey] ? [...staged, ...rest] : staged;
         body += visible.map(dl => {
-          const meps = all.filter(m => m.parentId === dl.id);
+          const meps = sortMepsForRealm(all.filter(m => m.parentId === dl.id));
           const dKey = `sdb-${dl.id}`;
           const inner = expandState[dKey]
-            ? meps.map(m => sdbCardHTML(m.name, m.country || '', '', 'sdb-card--mep')).join('')
+            ? meps.map(m => sdbCardHTML(m.name, m.country || '', '', 'sdb-card--mep', m.id)).join('')
             : '';
           return sdbCardHTML(dl.name, `${meps.length} MEPs`,
             (meps.length ? sdbToggleHTML(dKey, `Hide ${meps.length} MEPs`, `Show ${meps.length} MEPs`, true) : '') + inner,
-            'sdb-card--deleg');
+            'sdb-card--deleg', dl.id);
         }).join('');
         if (rest.length) body += sdbToggleHTML(mKey, `Hide ${rest.length} further delegations`, `Show ${rest.length} further delegations`, true);
       }
       return sdbCardHTML(g.name, `${g.weight} seats`,
         (delegs.length ? sdbToggleHTML(gKey, `Hide ${delegs.length} national delegations`, `Show ${delegs.length} national delegations`) : '') + body,
-        'sdb-card--group');
+        'sdb-card--group', g.id);
     };
     const sideKey = 'sdb-ep-side';
-    epHTML = mainGroups.map(groupCard).join('');
-    if (expandState[sideKey]) epHTML += sideGroups.map(groupCard).join('');
+    epHTML = mainGroups.map(g => groupCard(g, false)).join('');
+    sideGroups.forEach(g => { if (!expandState[sideKey]) groupCard(g, true); });
+    if (expandState[sideKey]) epHTML += sideGroups.map(g => groupCard(g, true)).join('');
     if (sideGroups.length) {
       epHTML += sdbToggleHTML(sideKey,
         `Hide ${sideGroups.length} political groups`,
@@ -2244,7 +2525,9 @@ function renderStakeholderDbView() {
     const restRows = rows.filter(r => !r.key).sort((a, b) => b.weight - a.weight);
     const msKey = 'sdb-ms-rest';
     const msOpen = !!expandState[msKey];
-    const card = r => sdbCardHTML(r.country + govSuffixHTML({ mandate: r.mandate }), `${r.weight.toFixed(1)}m`, '', 'sdb-card--ms');
+    const card = r => sdbCardHTML(r.country + govSuffixHTML({ mandate: r.mandate }), `${r.weight.toFixed(1)}m`, '', 'sdb-card--ms', 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-'));
+    keyRows.forEach(r => sdbIndexAdd({ id: 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-') }, r.country, `Council · Member State · ${r.weight.toFixed(1)}m`, 'council', []));
+    restRows.forEach(r => sdbIndexAdd({ id: 'ms-' + foldText(r.country).replace(/[^a-z0-9]+/g, '-') }, r.country, `Council · Member State · ${r.weight.toFixed(1)}m`, 'council', [msKey]));
     coHTML = keyRows.map(card).join('');
     if (msOpen) coHTML += restRows.map(card).join('');
     if (restRows.length) {
@@ -2263,9 +2546,13 @@ function renderStakeholderDbView() {
 
   let cmHTML = '';
   if (dgs) {
-    const dgCard = dg => sdbCardHTML(dg.code, dg.name, '', 'sdb-card--dg');
+    const dgId = dg => 'dg-' + foldText(dg.code).replace(/[^a-z0-9]+/g, '-');
+    const dgCard = dg => sdbCardHTML(dg.code, dg.name, '', 'sdb-card--dg', dgId(dg));
     cmHTML = dgs.priority.map(dgCard).join('');
     const eKey = 'sdb-dg-econ', rKey = 'sdb-dg-rest';
+    dgs.priority.forEach(dg => sdbIndexAdd({ id: dgId(dg) }, `${dg.code} — ${dg.name}`, 'European Commission · Directorate-General', 'dg', []));
+    dgs.econ.forEach(dg => sdbIndexAdd({ id: dgId(dg) }, `${dg.code} — ${dg.name}`, 'European Commission · Directorate-General', 'dg', [eKey]));
+    dgs.rest.forEach(dg => sdbIndexAdd({ id: dgId(dg) }, `${dg.code} — ${dg.name}`, 'European Commission · Directorate-General', 'dg', [eKey, rKey]));
     cmHTML += sdbToggleHTML(eKey, `Hide ${dgs.econ.length} further DGs`, `Show ${dgs.econ.length} further DGs`);
     if (expandState[eKey]) {
       cmHTML += dgs.econ.map(dgCard).join('');
@@ -2283,6 +2570,7 @@ function renderStakeholderDbView() {
     <div class="sdb-intro">Every institutional stakeholder in <strong>${realm.label}</strong>, pooled across all dossiers in this realm and listed once.
     Parliament and Council are derived live from the dossiers, so they stay in step automatically; the Commission's Directorates-General are held at realm level, since the full apparatus belongs to EU policy as such rather than to any single file.
     Positions and alignment charts are intentionally blank for now — how a stakeholder's stance should be expressed across several dossiers at once is still to be decided.${notActive > 0 ? ` (${notActive} further dossier${notActive > 1 ? 's' : ''} in this realm not active yet.)` : ''}</div>
+    ${sdbSearchBoxHTML()}
     <div class="sdb-cols">
       <div class="sdb-col">
         <div class="sdb-col-head"><span>European Parliament${mandateTagHTML(epMandate, '')}</span><span class="sdb-col-count">${epCount} MEPs</span></div>
