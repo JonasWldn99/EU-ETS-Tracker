@@ -350,7 +350,7 @@
   /* Uniform card geometry: every collapsed card occupies the same block so the four columns line
      up. The summary is clamped and the source line is pushed to the bottom, so cards with a short
      summary are padded out rather than shrinking. Expanding a card is allowed to grow it. */
-  .reaction-card2 { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; min-height: 196px; }
+  .reaction-card2 { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; min-height: 208px; }
   .reaction-card2.reaction-card2--member { min-height: 0; }
   .reaction-card2.reaction-tone-support { border-left-color: var(--support); background: rgba(127,176,105,0.06); }
   .reaction-card2.reaction-tone-oppose { border-left-color: var(--oppose); background: rgba(193,85,75,0.06); }
@@ -422,7 +422,19 @@
   .reaction-card2--member .reaction-card2-source { margin-top: 6px; padding-top: 0; }
   /* Collapsed summaries are clamped so card height does not depend on how long the summary is;
      the "More detailed reaction" toggle already signals there is more. */
-  .reaction-card2-text--summary { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .reaction-card2-text--summary {
+      display: -webkit-box;
+      /* 3 lines, RESERVED not merely capped: the block is the same height whether the
+         summary runs one line or overflows, so no summary length can change card height.
+         Character caps were tried three times (§139/§142/§144) and cannot work — Poland
+         and Sweden both have 241-character summaries that render 3 and 4 lines
+         respectively, because wrapping depends on where words break, not on length. */
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      height: calc(3 * 1.55 * 11.5px + 2px);
+      flex-shrink: 0;
+    }
   /* Business and NGO have no sub-column heading, so their first card would start higher than the
      EP/Council ones. This invisible spacer reproduces exactly one sub-title box, putting all four
      columns on the same baseline. */
@@ -3222,7 +3234,7 @@ DOSSIERS = {
     },
     {
       "actor": "France (Barbut)",
-      "summary": "Calls the package a solid basis for negotiation and the Industrial Decarbonisation Bank with its 2028 Investment Booster “a major advance” — while pledging to fight for a durable CBAM export solution and performance-targeted support.",
+      "summary": "Calls the package “a solid basis” and the Industrial Decarbonisation Bank “a major advance” — but will fight for a durable CBAM export solution.",
       "entityId": "france",
       "actorType": "Council/Member State",
       "role": "Minister for Ecological Transition, Biodiversity and International Climate Negotiations",
@@ -3241,7 +3253,7 @@ DOSSIERS = {
     },
     {
       "actor": "Sweden (Pourmokhtari/Westlén)",
-      "summary": "Rejects the proposal's ambition level outright — the LRF cut “rewrites the rules of play” and punishes firms that already invested. Welcomes only the maritime and waste-incineration extensions; will “oppose any attempt to dilute the system.”",
+      "summary": "Calls the ambition level “inadequate” — the LRF cut “rewrites the rules of play” and punishes firms that already invested. Welcomes the waste-incineration extension.",
       "entityId": "sweden",
       "actorType": "Council/Member State",
       "role": "Minister for Climate and the Environment; State Secretary for Climate and the Environment",
@@ -3261,7 +3273,7 @@ DOSSIERS = {
     },
     {
       "actor": "Poland (Hennig-Kloska/Bolesta)",
-      "summary": "Welcomes the package as “a success of Polish diplomacy” — the first easing rather than tightening of EU climate policy — but wants more: a larger Modernisation Fund, and remains lead signatory of the still-unaddressed ask to reconsider ETS2.",
+      "summary": "Welcomes the package as “a success of Polish diplomacy” — the first easing rather than tightening of EU climate policy — but still wants a larger Modernisation Fund.",
       "entityId": "poland",
       "actorType": "Council/Member State",
       "role": "Ministry of Climate and Environment — minister and deputy minister",
@@ -17482,7 +17494,7 @@ DOSSIERS = {
         {
           "date": "2026-08-03",
           "headline": "France breaks cover with the first written Council-side position — Paris backs the package as “a solid basis”, calls the Industrial Decarbonisation Bank “a major advance” and names a Franco-German deal in Council as the goal; Sweden's own primary statement surfaces, welcoming waste-incineration inclusion; the Presidency books five WPE sessions for early September",
-          "summary": "Three genuine findings, all from primary sources. (1) France — the largest Council weight and, until today, the single biggest gap in the reaction tracker — published an official ministry communiqué on 21 Jul 2026 that had gone uncaught for twelve days. Paris welcomes the proposal as “une étape importante” and “une base solide”, singles out the Industrial Decarbonisation Bank with its 2028 Investment Booster as “une avancée majeure”, and explicitly welcomes the 2040 trajectory extension, the non-integration of international credits into the EU market, and the greater mobilisation of ETS revenue for industrial decarbonisation — while committing to fight for innovation financing at scale, “une solution pérenne protégeant les exportations des secteurs couverts par le MACF”, and support targeted at the best-performing decarbonisation projects. Minister Monique Barbut names the mechanism explicitly: the balance is to be struck “dans le cadre de notre coopération avec l'Allemagne afin d'obtenir un accord rapide au Conseil”. Added as a new mixed reaction card (tier 1, topics ETS1/IDB/REVENUE/CBAMEXPORT) plus four stance-table entries. (2) Sweden's card was resting on RTÉ's Dublin reporting of State Secretary Westlén; the minister's own signed statement of 17 Jul (government.se, primary) is far more substantive and has been made the anchor — including, directly relevant to E.ON, an explicit welcome for municipal waste incineration entering the ETS because it “drives the expansion of carbon capture and storage” and sharpens incentives once district heating enters ETS2 in 2027. That makes Sweden the first Member State on public post-proposal record supporting MWI inclusion, against France's opposition. (3) Council calendar: three previously untracked WPE sessions on 2, 4 and 8 September (n°369380/369421/369576) join the tracked 1 and 15 Sep meetings — five in a fortnight, against three for the whole of July. Also read into the dossier for the first time: WK 10833/2026 INIT, DG CLIMA's own 20 Jul presentation to the WPE, which supplies the MWI operational design (3 t/h threshold per Directive 2010/75/EU, 25/50/75/100% phase-in 2031-2034, national opt-out to end-2035 on two of three conditions, district-heat free allocation 30% in 2030 declining to 0% in 2040) and confirms Investment Booster stakeholder consultations start in September 2026 — added as a new Commission milestone. Monthly institutional refresh (first Monday): MEP roster re-harvested live, 719 confirmed, zero arrivals, zero departures, all nine group counts unchanged; no EU head-of-government party change; Presidency handover not due until 1 Jan 2027; no new College or DG reorganisation. EUAs settled at €81.26 on 31 Jul.",
+          "summary": "Three genuine findings, all from primary sources. (1) France — by Council weight the heaviest Member State still without a reaction card, second only to Germany overall (9.47p vs 11.13p) — published an official ministry communiqué on 21 Jul 2026 that had gone uncaught for twelve days. Paris welcomes the proposal as “une étape importante” and “une base solide”, singles out the Industrial Decarbonisation Bank with its 2028 Investment Booster as “une avancée majeure”, and explicitly welcomes the 2040 trajectory extension, the non-integration of international credits into the EU market, and the greater mobilisation of ETS revenue for industrial decarbonisation — while committing to fight for innovation financing at scale, “une solution pérenne protégeant les exportations des secteurs couverts par le MACF”, and support targeted at the best-performing decarbonisation projects. Minister Monique Barbut names the mechanism explicitly: the balance is to be struck “dans le cadre de notre coopération avec l'Allemagne afin d'obtenir un accord rapide au Conseil”. Added as a new mixed reaction card (tier 1, topics ETS1/IDB/REVENUE/CBAMEXPORT) plus four stance-table entries. (2) Sweden's card was resting on RTÉ's Dublin reporting of State Secretary Westlén; the minister's own signed statement of 17 Jul (government.se, primary) is far more substantive and has been made the anchor — including, directly relevant to E.ON, an explicit welcome for municipal waste incineration entering the ETS because it “drives the expansion of carbon capture and storage” and sharpens incentives once district heating enters ETS2 in 2027. That makes Sweden the first Member State on public post-proposal record supporting MWI inclusion, against France's opposition. (3) Council calendar: three previously untracked WPE sessions on 2, 4 and 8 September (n°369380/369421/369576) join the tracked 1 and 15 Sep meetings — five in a fortnight, against three for the whole of July. Also read into the dossier for the first time: WK 10833/2026 INIT, DG CLIMA's own 20 Jul presentation to the WPE, which supplies the MWI operational design (3 t/h threshold per Directive 2010/75/EU, 25/50/75/100% phase-in 2031-2034, national opt-out to end-2035 on two of three conditions, district-heat free allocation 30% in 2030 declining to 0% in 2040) and confirms Investment Booster stakeholder consultations start in September 2026 — added as a new Commission milestone. Monthly institutional refresh (first Monday): MEP roster re-harvested live, 719 confirmed, zero arrivals, zero departures, all nine group counts unchanged; no EU head-of-government party change; Presidency handover not due until 1 Jan 2027; no new College or DG reorganisation. EUAs settled at €81.26 on 31 Jul.",
           "impactNote": "The France finding matters more for what it says about process than for its content: the tracker's coverage rule is exhaustive by design, yet the single heaviest Council actor's own ministry press release sat unread for twelve days because it is French-language and was published four days after the proposal, outside the reaction-wave window that English-language round-ups covered. That is the same failure shape as Poland on 31 Jul, and it is now twice — the national-language sweep needs to run against ministry press pages by default, not only against wires. Substantively, two things move. First, Barbut's framing puts a Franco-German deal at the centre of the Council endgame, and both halves of that axis are now on record as broadly supportive — which lowers the probability of the loosening bloc extracting much more, and raises the probability of a fast agreement on roughly the tabled shape. Second, the MWI question has acquired real poles: Sweden publicly for inclusion, France against, with E.ON's Swedish waste fleet on the same side as Stockholm. Sharper next question for Jonas: France's CBAM-export ask is now an active French negotiating objective rather than a technical footnote, and it is one of only three improvements Paris named — worth deciding this month whether E.ON wants to be visible behind it, because a Franco-German bloc that has already agreed its asks is much harder to add to in October than in August.",
           "sourceLabel": "Ministère de la Transition écologique, communiqué 21 Jul 2026 (primary); Government of Sweden, statement by Minister Pourmokhtari, 17 Jul 2026 (primary); Council WK 10833/2026 INIT, DG CLIMA presentation to WPE 20 Jul 2026 (primary); consilium.europa.eu WPE meeting calendar (Chrome-verified); europarl.europa.eu ENVI Latest Documents + MEP full list (Chrome-verified); Trading Economics",
           "sourceUrl": "https://www.ecologie.gouv.fr/presse/revision-leu-ets-etape-determinante-accelerer-decarbonation-lindustrie-europeenne"
