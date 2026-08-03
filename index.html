@@ -743,7 +743,7 @@
          that can sit on any of them. -->
     <span class="stance-chip" data-stance="support" data-intensity="2">ALIGNED</span>
     <span class="stance-chip" data-stance="oppose" data-intensity="2">OPPOSED</span>
-    <span class="stance-chip" data-stance="neutral" data-intensity="2">MIXED</span>
+    <span class="stance-chip" data-stance="neutral">MIXED</span>
     <span class="stance-chip">NOT YET ASSESSED</span>
     <span class="legend-sep"></span>
     <span class="stance-chip" data-stance="support" data-intensity="1">WEAKLY ALIGNED</span>
@@ -795,10 +795,42 @@ function getDossier() { return DOSSIERS[currentDossierId]; }
 // do we recurse into children to look for a more specific position.
 // This prevents double-counting across group -> delegation -> MEP.
 // ---------------------------------------------------------------
+/* ---------------------------------------------------------------------------
+   HOW MUCH A RECORDED STANCE COUNTS  (Jonas, 3 Aug 2026)
+   One rule, readable straight off the chip: a chip that is NEITHER faded NOR
+   dashed counts in full; one weakness costs a third; both weaknesses leave a
+   third. Because a chip is faded at intensity 1 and dashed at confidence 1,
+   the grid below IS the chip.
+
+        intensity \ confidence     1        2        3
+                      1          33.3%    66.6%    66.6%
+                      2          66.6%    100%     100%
+                      3          66.6%    100%     100%
+
+   Chosen over a stricter variant in which confidence set a hard ceiling. That
+   version discounted more honestly but emptied the pie charts and broke the
+   correspondence with the chips; Jonas's call was legibility over precision, on
+   the ground that a chart nobody can read accurately is worse than one that is
+   slightly generous.
+   MIXED carries no intensity (there is no distance-to-ask to measure), so the
+   rule collapses to confidence alone there: >=2 counts in full, 1 counts a third.
+   The remainder always flows to `nodata`, which is why that slice is now labelled
+   "Unclear" rather than "No data" — it holds the unassessed, the uncertain and
+   the merely nominal together.
+   ------------------------------------------------------------------------- */
+function stanceWeightFactor(s) {
+  if (!s) return 0;
+  const conf = s.confidence;
+  const inten = (s.stance === 'neutral' || s.intensity == null) ? conf : s.intensity;
+  if (inten >= 2 && conf >= 2) return 1;
+  if (inten === 1 && conf === 1) return 1 / 3;
+  return 2 / 3;
+}
+
 function resolveContribution(entity, topicId, allEntities, acc) {
   const s = entity.stances[topicId];
   if (s) {
-    const confFactor = s.confidence / 3;
+    const confFactor = stanceWeightFactor(s);
     acc[s.stance] += entity.weight * confFactor;
     acc.nodata += entity.weight * (1 - confFactor);
     return;
@@ -851,7 +883,7 @@ function donutHTML(title, sub, bd) {
         <div class="donut-legend-row"><span><span class="donut-legend-swatch" style="background:var(--support)"></span>Aligned</span><span>${pct(bd.support,bd.totalWeight).toFixed(0)}%</span></div>
         <div class="donut-legend-row"><span><span class="donut-legend-swatch" style="background:var(--oppose)"></span>Opposed</span><span>${pct(bd.oppose,bd.totalWeight).toFixed(0)}%</span></div>
         <div class="donut-legend-row"><span><span class="donut-legend-swatch" style="background:var(--neutral)"></span>Mixed</span><span>${pct(bd.neutral,bd.totalWeight).toFixed(0)}%</span></div>
-        <div class="donut-legend-row"><span><span class="donut-legend-swatch" style="background:var(--unclear)"></span>No data</span><span>${pct(bd.nodata,bd.totalWeight).toFixed(0)}%</span></div>
+        <div class="donut-legend-row"><span><span class="donut-legend-swatch" style="background:var(--unclear)"></span>Unclear</span><span>${pct(bd.nodata,bd.totalWeight).toFixed(0)}%</span></div>
       </div>
     </div>
   `;
@@ -954,11 +986,19 @@ function stanceChipHTML(topicId, stances) {
   const s = stances[topicId];
   const topic = getDossier().topics.find(t => t.id === topicId);
   if (!s) return `<span class="stance-chip" title="${topic.label}: not yet assessed">${topic.code}</span>`;
-  const tip = `${topic.label}: ${s.stance.toUpperCase()} (intensity ${s.intensity}/3) (confidence ${s.confidence}/3) — ${sourceLabel(s)}${s.note ? ' — ' + s.note : ''}`;
+  // The stored key is `neutral`; the vocabulary everywhere the user reads is MIXED, so the
+  // tooltip says MIXED too. And a Mixed stance has no intensity, so that clause is omitted
+  // rather than printed as "intensity undefined/3".
+  const stanceWord = s.stance === 'neutral' ? 'MIXED' : s.stance.toUpperCase();
+  const intClause = (s.stance !== 'neutral' && s.intensity != null) ? ` (intensity ${s.intensity}/3)` : '';
+  const tip = `${topic.label}: ${stanceWord}${intClause} (confidence ${s.confidence}/3) — ${sourceLabel(s)}${s.note ? ' — ' + s.note : ''}`;
   const lowconf = s.confidence <= 1 ? 'data-lowconf="1"' : '';
+  // Mixed has no intensity, so the attribute is omitted rather than emitted as "null";
+  // an absent attribute matches no opacity rule and therefore renders at full strength.
+  const intAttr = (s.stance !== 'neutral' && s.intensity != null) ? `data-intensity="${s.intensity}"` : '';
   const safeTip = tip.replace(/"/g,'&quot;');
-  if (s.url) return `<a class="stance-chip" href="${s.url}" target="_blank" rel="noopener" data-stance="${s.stance}" data-intensity="${s.intensity}" ${lowconf} title="${safeTip}">${topic.code}</a>`;
-  return `<span class="stance-chip" data-stance="${s.stance}" data-intensity="${s.intensity}" ${lowconf} title="${safeTip}">${topic.code}</span>`;
+  if (s.url) return `<a class="stance-chip" href="${s.url}" target="_blank" rel="noopener" data-stance="${s.stance}" ${intAttr} ${lowconf} title="${safeTip}">${topic.code}</a>`;
+  return `<span class="stance-chip" data-stance="${s.stance}" ${intAttr} ${lowconf} title="${safeTip}">${topic.code}</span>`;
 }
 
 // ---------------------------------------------------------------
@@ -1338,7 +1378,16 @@ function renderInstitutionView() {
 function stanceLabelText(s) {
   if (!s) return { text: 'NOT ASSESSED', cls: 'unclear', bars: 0 };
   const map = { support: 'ALIGNED', oppose: 'OPPOSED', neutral: 'MIXED' };
-  return { text: `${map[s.stance]} · ${s.intensity}/3 (conf. ${s.confidence}/3)`, cls: s.stance, bars: s.intensity };
+  // Mixed means no net direction can be attributed, so there is no distance-to-ask
+  // to express: show confidence only, and no signal bars.
+  const hasIntensity = s.stance !== 'neutral' && s.intensity != null;
+  return {
+    text: hasIntensity
+      ? `${map[s.stance]} · ${s.intensity}/3 (conf. ${s.confidence}/3)`
+      : `${map[s.stance]} · (conf. ${s.confidence}/3)`,
+    cls: s.stance,
+    bars: hasIntensity ? s.intensity : 0
+  };
 }
 
 // Shows WHOSE position is actually being tracked for a Member State. The office holder is the one
@@ -6196,12 +6245,11 @@ DOSSIERS = {
                     "parentId": "germany-epp-delegation",
                     "stances": {
                               "msr": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://www.peter-liese.de/en/32-english/press-releases-en/4443-european-commission-proposes-first-changes-to-the-emissions-trading-system",
-                                        "note": "Two sources in tension: (1) public statement Apr 2026 — future MSR \"must ensure prices are dampened and not driven upwards\" (confidence 3, direct quote). (2) CDU/CSU Bundestag group note (Jun 2026, confidence 2): explicitly demands stopping MSR invalidation (aligned with E.ON) — but ALSO demands easier injection of extra allowances \"in economic crisis times,\" which is a form of discretionary intervention E.ON's position paper explicitly opposes (\"no discretionary intervention\"). Net: aligned on stopping invalidation, diverges on crisis-discretion. Marked neutral to reflect this internal tension rather than overstate alignment."
+                                "stance": "neutral",
+                                "confidence": 2,
+                                "source": "research",
+                                "url": "https://www.peter-liese.de/en/32-english/press-releases-en/4443-european-commission-proposes-first-changes-to-the-emissions-trading-system",
+                                "note": "Two sources in tension: (1) public statement Apr 2026 — future MSR \"must ensure prices are dampened and not driven upwards\" (confidence 3, direct quote). (2) CDU/CSU Bundestag group note (Jun 2026, confidence 2): explicitly demands stopping MSR invalidation (aligned with E.ON) — but ALSO demands easier injection of extra allowances \"in economic crisis times,\" which is a form of discretionary intervention E.ON's position paper explicitly opposes (\"no discretionary intervention\"). Net: aligned on stopping invalidation, diverges on crisis-discretion. Marked neutral to reflect this internal tension rather than overstate alignment. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               },
                               "lrf": {
                                         "stance": "support",
@@ -10274,12 +10322,11 @@ DOSSIERS = {
                     "parentId": "france-renew-delegation",
                     "stances": {
                               "art29a": {
-                                        "stance": "neutral",
-                                        "intensity": 1,
-                                        "confidence": 3,
-                                        "source": "research",
-                                        "url": "https://carbon-pulse.com/504271/",
-                                        "note": "Carbon Pulse interview (20 Apr 2026) has Canfin backing a 'price corridor' — a FIXED price band (floor + ceiling). This is NOT the same mechanism as E.ON's Art.29a ask, which is explicitly a rule-based trigger on drastic price increases, not fixed price levels — E.ON is currently not advocating for fixed prices/corridors, fearing market distortion. Marked neutral rather than support: Canfin is directionally engaged on price-stability topics, but his specific proposal differs from, and should not be conflated with, E.ON's actual position."
+                                "stance": "neutral",
+                                "confidence": 3,
+                                "source": "research",
+                                "url": "https://carbon-pulse.com/504271/",
+                                "note": "Carbon Pulse interview (20 Apr 2026) has Canfin backing a 'price corridor' — a FIXED price band (floor + ceiling). This is NOT the same mechanism as E.ON's Art.29a ask, which is explicitly a rule-based trigger on drastic price increases, not fixed price levels — E.ON is currently not advocating for fixed prices/corridors, fearing market distortion. Marked neutral rather than support: Canfin is directionally engaged on price-stability topics, but his specific proposal differs from, and should not be conflated with, E.ON's actual position. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               },
                               "ets1general": {
                                         "stance": "support",
@@ -10303,11 +10350,11 @@ DOSSIERS = {
                                         "note": "Renew MEP letter (3 Jul 2026) explicitly warns against 'short-term fixes to freeze the price signal or trigger urgent releases of allowances from the MSR' — aligned with E.ON's no-discretionary-intervention ask."
                               },
                               "freealloc": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support."
+                                "stance": "oppose",
+                                "intensity": 1,
+                                "confidence": 3,
+                                "source": "document",
+                                "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support. [Re-classified 3 Aug 2026: conditioning free allocation on investment is a mild deviation from E.ON’s blanket slower-phase-out ask, not an offsetting position — the identical reading already yields oppose/intensity 1 for six Member States, so Mixed here was an internal inconsistency.]"
                               }
                     },
                     "weight": 1,
@@ -10777,11 +10824,11 @@ DOSSIERS = {
                                         "note": "Renew MEP letter (3 Jul 2026) explicitly warns against 'short-term fixes to freeze the price signal or trigger urgent releases of allowances from the MSR' — aligned with E.ON's no-discretionary-intervention ask."
                               },
                               "freealloc": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support."
+                                "stance": "oppose",
+                                "intensity": 1,
+                                "confidence": 3,
+                                "source": "document",
+                                "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support. [Re-classified 3 Aug 2026: conditioning free allocation on investment is a mild deviation from E.ON’s blanket slower-phase-out ask, not an offsetting position — the identical reading already yields oppose/intensity 1 for six Member States, so Mixed here was an internal inconsistency.]"
                               }
                     },
                     "mepId": "96940"
@@ -11120,11 +11167,11 @@ DOSSIERS = {
                                         "note": "Renew MEP letter (3 Jul 2026) explicitly warns against 'short-term fixes to freeze the price signal or trigger urgent releases of allowances from the MSR' — aligned with E.ON's no-discretionary-intervention ask."
                               },
                               "freealloc": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support."
+                                "stance": "oppose",
+                                "intensity": 1,
+                                "confidence": 3,
+                                "source": "document",
+                                "note": "Renew MEP letter (3 Jul 2026) conditions free allocation on investment and calls for 'a more targeted allocation approach... to reflect the actual exposure to carbon leakage' — this tiered/differentiated framing is genuinely welcome and well aligned with E.ON's own FREEALLOC ask. But the letter does not commit on the pace of phase-out and pairs it with investment-conditionality language, so marked neutral rather than support. [Re-classified 3 Aug 2026: conditioning free allocation on investment is a mild deviation from E.ON’s blanket slower-phase-out ask, not an offsetting position — the identical reading already yields oppose/intensity 1 for six Member States, so Mixed here was an internal inconsistency.]"
                               }
                     },
                     "weight": 1,
@@ -16112,19 +16159,19 @@ DOSSIERS = {
                                         "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
                               },
                               "art29a": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "manual",
+                                "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "ets2delay": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
-                                        "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "research",
+                                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+                                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "ets1general": {
                                         "stance": "support",
@@ -16181,26 +16228,26 @@ DOSSIERS = {
                                         "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
                               },
                               "art29a": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "manual",
+                                "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "ets2delay": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
-                                        "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "research",
+                                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+                                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "ets1general": {
-                                        "stance": "support",
-                                        "intensity": 1,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. No confirmed reaction from BMWE/Reiche specifically to the published Commission proposal (COM, 17 Jul 2026) has been found as of 21 Jul 2026 — the lrf/freealloc/msr/art29a stances above still rest on the pre-proposal Rheinische Post report of a Bundestag written-question response (Jun 2026), not a genuine post-proposal statement. Flagged pending a direct BMWE reaction; do not treat as confirmed post-proposal alignment."
+                                "stance": "support",
+                                "intensity": 1,
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. No confirmed reaction from BMWE/Reiche specifically to the published Commission proposal (COM, 17 Jul 2026) has been found as of 21 Jul 2026 — the lrf/freealloc/msr/art29a stances above still rest on the pre-proposal Rheinische Post report of a Bundestag written-question response (Jun 2026), not a genuine post-proposal statement. Flagged pending a direct BMWE reaction; do not treat as confirmed post-proposal alignment. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               }
                     },
                     "mandate": {
@@ -16317,11 +16364,11 @@ DOSSIERS = {
                                         "note": "Lead signatory. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
                               },
                               "ets1general": {
-                                        "stance": "oppose",
-                                        "intensity": 3,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "oppose",
+                                "intensity": 3,
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               }
                     },
                     "mandate": {
@@ -16541,11 +16588,11 @@ DOSSIERS = {
                                         "note": "Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/eunews.it, 15 Jul 2026): explicitly accepts “incentive-based conditionality linked to investments... for additional, much-needed allocations for sectors in a position to undertake extra efforts,” but opposes “a general conditionality applied to all free allocation” as imposing “heavy strain on already struggling industrial sectors” — “free allocation is not a reward but a necessity providing protection against carbon leakage.” Also calls to pause the CBAM-sector free-allocation phase-out “until this new tool proves its effectiveness.” Directionally aligned with E.ON's tiered/conditional-only-for-additional-allocations approach, though the blanket-necessity framing is broader than E.ON's own ask."
                               },
                               "art29a": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "manual",
+                                "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "speculation": {
                                         "stance": "oppose",
@@ -16570,11 +16617,10 @@ DOSSIERS = {
                                         "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
                               },
                               "ets1general": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "neutral",
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.] [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               },
                               "modfund": {
                                         "stance": "support",
@@ -16619,11 +16665,11 @@ DOSSIERS = {
                                         "note": "Joint statement on the EU ETS revision (Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Italy, Poland, Romania, Slovakia; primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): the current near-zero-by-2039 target “will push industries out of Europe. Extending the ETS cap closer to 2050 is therefore necessary.” Aligned with E.ON's ask to lower the LRF pace toward a 2050-aligned trajectory rather than a faster near-term target."
                               },
                               "art29a": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask."
+                                "stance": "support",
+                                "intensity": 2,
+                                "confidence": 1,
+                                "source": "manual",
+                                "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               },
                               "speculation": {
                                         "stance": "oppose",
@@ -16648,11 +16694,11 @@ DOSSIERS = {
                                         "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
                               },
                               "ets1general": {
-                                        "stance": "oppose",
-                                        "intensity": 3,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "oppose",
+                                "intensity": 3,
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               }
                     },
                     "mandate": {
@@ -16712,11 +16758,10 @@ DOSSIERS = {
                                         "note": "E.ON internal intel table (Jonas), Jul 2026."
                               },
                               "ets1general": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "neutral",
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.] [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               }
                     },
                     "mandate": {
@@ -16776,11 +16821,11 @@ DOSSIERS = {
                                         "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask. See leverage-behaviour caution in role field."
                               },
                               "ets1general": {
-                                        "stance": "oppose",
-                                        "intensity": 3,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "oppose",
+                                "intensity": 3,
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Pause / abolition of the system (dark red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
                               }
                     },
                     "mandate": {
@@ -16840,11 +16885,10 @@ DOSSIERS = {
                                         "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask. See leverage-behaviour caution in role field."
                               },
                               "ets1general": {
-                                        "stance": "neutral",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "document",
-                                        "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose."
+                                "stance": "neutral",
+                                "confidence": 1,
+                                "source": "document",
+                                "note": "Eurelectric member survey: Major changes requested (red). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.] [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               }
                     },
                     "mandate": {
@@ -17174,12 +17218,11 @@ DOSSIERS = {
                     "hideFromList": true,
                     "stances": {
                               "ets1general": {
-                                        "stance": "neutral",
-                                        "intensity": 1,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
-                                        "note": "Agence Europe (13 Jul 2026) names Croatia among the ten-country “critics” bloc — Austria, Bulgaria, Croatia, Greece, Hungary, Italy, Poland, Czechia, Romania, Slovakia — “calling for maximum flexibility during the legislative revision.” General bloc categorization, not a country-specific quote — logged at low intensity/confidence 2 pending a Croatia-specific statement."
+                                "stance": "neutral",
+                                "confidence": 2,
+                                "source": "research",
+                                "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
+                                "note": "Agence Europe (13 Jul 2026) names Croatia among the ten-country “critics” bloc — Austria, Bulgaria, Croatia, Greece, Hungary, Italy, Poland, Czechia, Romania, Slovakia — “calling for maximum flexibility during the legislative revision.” General bloc categorization, not a country-specific quote — logged at low intensity/confidence 2 pending a Croatia-specific statement. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
                               }
                     },
                     "mandate": {
@@ -17491,17 +17534,15 @@ DOSSIERS = {
               },
               "indirect": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 (aligned with E.ON), but it remains a national State-aid measure rather than an EU-wide harmonised mandate \u2014 not aligned with E.ON's specific ask to mandate it EU-wide in the Directive itself."
+                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 (aligned with E.ON), but it remains a national State-aid measure rather than an EU-wide harmonised mandate — not aligned with E.ON's specific ask to mandate it EU-wide in the Directive itself. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "freealloc": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Upgraded 21 Jul 2026 to primary, stance revised to mixed given the now-broadened topic. Art. 10a: phase-out stretched to 2038 (aligned with E.ON on pace) via a blanket 80/20 investment-conditionality mechanism (\"Invest in EU decarbonisation plan\", 10% lowest-emitters exempt) \u2014 NOT the sector-leakage-risk-tiered approach E.ON specifically asked for. E.ON's own assessment table scores the tiering ask \"-\" for exactly this reason, even while scoring the phase-out extension \"++\"."
+                "note": "Upgraded 21 Jul 2026 to primary, stance revised to mixed given the now-broadened topic. Art. 10a: phase-out stretched to 2038 (aligned with E.ON on pace) via a blanket 80/20 investment-conditionality mechanism (\"Invest in EU decarbonisation plan\", 10% lowest-emitters exempt) — NOT the sector-leakage-risk-tiered approach E.ON specifically asked for. E.ON's own assessment table scores the tiering ask \"-\" for exactly this reason, even while scoring the phase-out extension \"++\". [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "cbamexport": {
                 "stance": "oppose",
@@ -17540,10 +17581,9 @@ DOSSIERS = {
               },
               "revenue": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Added 21 Jul 2026 \u2014 Art. 10/10a mandate at least 50% of national ETS1 revenues (after indirect-cost-compensation deductions) to decarbonisation purposes. But a new EU-budget \"Own Resources\" carve-out of 30% of auction revenue shrinks the base the 50% earmarking applies to \u2014 E.ON's own table estimates this cuts the effective national earmarking rate for energy/climate purposes from 100% today to roughly 35%. Mixed outcome, scored \"+-\" by E.ON."
+                "note": "Added 21 Jul 2026 — Art. 10/10a mandate at least 50% of national ETS1 revenues (after indirect-cost-compensation deductions) to decarbonisation purposes. But a new EU-budget \"Own Resources\" carve-out of 30% of auction revenue shrinks the base the 50% earmarking applies to — E.ON's own table estimates this cuts the effective national earmarking rate for energy/climate purposes from 100% today to roughly 35%. Mixed outcome, scored \"+-\" by E.ON. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "beccs": {
                 "stance": "support",
@@ -17631,17 +17671,15 @@ DOSSIERS = {
               },
               "indirect": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 but leaves it a national State-aid measure rather than an EU-wide harmonised mandate. See Cabinet Hoekstra entry."
+                "note": "Mixed: Art. 10a extends indirect cost compensation beyond 2030 but leaves it a national State-aid measure rather than an EU-wide harmonised mandate. See Cabinet Hoekstra entry. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "freealloc": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Upgraded 21 Jul 2026, stance revised to mixed given the now-broadened topic. Art. 10a extends phase-out to 2038 (aligned with E.ON) via blanket 80/20 investment-conditionality, not the sector-tiered approach E.ON asked for. See Cabinet Hoekstra entry."
+                "note": "Upgraded 21 Jul 2026, stance revised to mixed given the now-broadened topic. Art. 10a extends phase-out to 2038 (aligned with E.ON) via blanket 80/20 investment-conditionality, not the sector-tiered approach E.ON asked for. See Cabinet Hoekstra entry. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "cbamexport": {
                 "stance": "oppose",
@@ -17680,10 +17718,9 @@ DOSSIERS = {
               },
               "revenue": {
                 "stance": "neutral",
-                "intensity": 2,
                 "confidence": 3,
                 "source": "research",
-                "note": "Added 21 Jul 2026 \u2014 50% national earmarking mandate, but a new EU \"Own Resources\" carve-out shrinks its effective base. See Cabinet Hoekstra entry."
+                "note": "Added 21 Jul 2026 — 50% national earmarking mandate, but a new EU \"Own Resources\" carve-out shrinks its effective base. See Cabinet Hoekstra entry. [Mixed carries no intensity (3 Aug 2026): there is no distance-to-E.ON’s-ask to measure when no net direction can be attributed.]"
               },
               "beccs": {
                 "stance": "support",
