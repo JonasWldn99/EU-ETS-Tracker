@@ -52,7 +52,7 @@
   .realm-note { font-size: 11px; color: var(--text-tertiary); font-style: italic; margin-top: 4px; }
 
   /* --- placeholder / not-yet-active panels ------------------------------ */
-  .placeholder-panel { border: 1px dashed var(--border); border-radius: 10px; padding: 26px 22px; text-align: center; color: var(--text-tertiary); background: var(--surface); }
+  .placeholder-panel { border: 1px dashed var(--border); border-radius: 10px; padding: 25px 21px; text-align: center; color: var(--text-tertiary); background: var(--surface); }
   .placeholder-panel .ph-title { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
   .placeholder-panel .ph-body { font-size: 12px; line-height: 1.6; max-width: 620px; margin: 0 auto; }
 
@@ -70,7 +70,7 @@
   .sdb-col { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); }
   .sdb-col-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 9px; margin-bottom: 11px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 13px; color: var(--text-primary); }
   .sdb-col-count { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); font-weight: 400; }
-  .sdb-chartbox { border: 1px dashed var(--border); border-radius: 9px; padding: 14px 12px; margin-bottom: 12px; text-align: center; background: var(--bg); }
+  .sdb-chartbox { border: 1px dashed var(--border); border-radius: 9px; padding: 13px 11px; margin-bottom: 12px; text-align: center; background: var(--bg); }
   .sdb-chartbox-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 8px; }
   .sdb-chartbox-empty { font-size: 11px; color: var(--text-tertiary); line-height: 1.5; padding: 16px 0; }
   .sdb-chartbox-empty span { opacity: 0.7; font-style: italic; }
@@ -157,7 +157,37 @@
   .view-toggle button.active { background: var(--surface-raised); color: var(--text-primary); }
   select#topicSelect { background: var(--surface); border: 1px solid var(--border); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; padding: 9px 14px; border-radius: 8px; min-width: 380px; }
 
-  .legend { display: flex; gap: 18px; font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); align-items: center; flex-wrap: wrap; }
+  .legend { display: flex; gap: 8px; font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); align-items: center; flex-wrap: wrap; }
+  /* Legend chips are real stance-chips, so they inherit every rule above. Only the label is
+     longer than a topic code, so wrapping is suppressed and the sizing left untouched. */
+  .legend .stance-chip { white-space: nowrap; }
+  .legend-note { font-size: 10px; color: var(--text-tertiary); margin-left: 4px; }
+  .legend-sep { width: 1px; height: 14px; background: var(--border); margin: 0 4px; }
+
+  /* ------------------------------------------------------------------
+     DASHED BORDERS — one treatment, defined once (Jonas, 3 Aug 2026).
+     CSS gives no direct control over dash length, but Chrome derives it from
+     border-width, so 2px yields roughly half as many dashes as 1px and the frame
+     reads as dashed rather than as a dotted line. Measured against 1 / 1.5 / 2 /
+     2.5 / 3px specimens in the browser: 1px is nearly dotted, 2.5px and above turn
+     chunky on small elements. Every dashed FRAME therefore uses 2px, with padding
+     reduced by 1px on each side so the element's outer geometry is unchanged
+     against its solid-bordered neighbours.
+     Two deliberate exceptions, both flagged to Jonas rather than silently taken:
+       - hairline SEPARATORS (border-top only) stay 1px — doubling a divider makes it
+         compete with the content it divides, and there is no frame to read;
+       - `.sdb-chip-empty` stays 1px — at 22x11px a 2px dashed border leaves almost
+         no interior and reads as a solid blob.
+     ------------------------------------------------------------------ */
+  .stance-chip[data-lowconf="1"] { border-width: 2px; padding: 2px 5px; }
+  .placeholder-panel,
+  .sdb-chartbox,
+  .cd-cell-inner.cd-pending,
+  .cd-cell-inner.cd-interim { border-width: 2px; }
+  .expand-toggle,
+  .envi-members-toggle { border-width: 2px; padding: 3px 9px; }
+  .rr-pillar-toggle { border-width: 2px; padding: 2px 9px; }
+  .event-format-badge.hybrid { border-width: 2px; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
 
@@ -228,10 +258,22 @@
   .stance-chip[data-stance="support"] { background: rgba(127, 176, 105, 0.16); color: var(--support); border-color: rgba(127, 176, 105, 0.4); }
   .stance-chip[data-stance="oppose"] { background: rgba(193, 85, 75, 0.16); color: var(--oppose); border-color: rgba(193, 85, 75, 0.4); }
   .stance-chip[data-stance="neutral"] { background: rgba(139, 147, 163, 0.32); color: #D6DAE1; border-color: rgba(139, 147, 163, 0.75); border-width: 1.5px; font-weight: 600; }
-  .stance-chip[data-intensity="1"] { opacity: 0.65; }
-  .stance-chip[data-intensity="2"] { opacity: 0.85; }
+  /* Intensity is a TWO-fold distinction, deliberately, and it mirrors the confidence
+     encoding directly above/below it: dashed vs solid border for confidence, faded vs
+     full for intensity. It used to be three-fold (0.65 / 0.85 / 1.0), which failed for
+     the reason §147 already established for the coverage ring — a brightness band that
+     narrow cannot carry a legible difference, and 2/3 vs 3/3 covers 203 of 221 assessed
+     chips, i.e. almost the whole population was split by a distinction nobody could see.
+     Now: 1/3 reads as visibly faded, 2/3 and 3/3 both read as full. NOTE the fade is
+     stance-AGNOSTIC — it applies to oppose and neutral exactly as it does to support, and
+     weak opposition is in fact the commonest case (13 entries vs 3 weak support).
+     The exact value stays
+     available on hover and, in "By Topic", as the numeric label and signal bars.
+     (Jonas, 3 Aug 2026.) */
+  .stance-chip[data-intensity="1"] { opacity: 0.6; }
+  .stance-chip[data-intensity="2"],
   .stance-chip[data-intensity="3"] { opacity: 1; }
-  .stance-chip[data-lowconf="1"] { border-style: dashed; }
+  .stance-chip[data-lowconf="1"] { border-style: dashed; } /* width/padding set in the dashed block below */
   a.stance-chip { text-decoration: none; cursor: pointer; }
   a.stance-chip:hover { filter: brightness(1.3); }
   a.stance-chip::after { content: ' ↗'; opacity: 0.6; font-size: 8px; }
@@ -686,12 +728,25 @@
 
   <select id="topicSelect" class="hidden"></select>
 
+  <!-- The legend is built from the SAME `stance-chip` class and the same data attributes the
+       live chips use, so it is a specimen sheet rather than a description: change the chip
+       styling and the key restyles with it, and it cannot drift out of date. Writing the swatch
+       styles inline by hand is what let §160's legend claim the fade meant "weak alignment"
+       when the CSS selector never mentioned stance at all. (Jonas, 3 Aug 2026.) -->
   <div class="legend" id="stakeholderLegend">
-    <div class="legend-item"><span class="legend-swatch" style="background:rgba(127,176,105,0.35);border:1px solid var(--support)"></span>Aligned</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:rgba(193,85,75,0.35);border:1px solid var(--oppose)"></span>Opposed</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:rgba(139,147,163,0.32);border:1.5px solid rgba(139,147,163,0.75)"></span>Mixed</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)"></span>Not yet assessed</div>
-    <div class="legend-item"><span class="legend-swatch" style="border:1px dashed var(--text-tertiary);background:none"></span>Confidence 1/3 (inferred)</div>
+    <!-- Read in two blocks: the four states a position can be in, then the two modifiers
+         that can sit on any of them. -->
+    <span class="stance-chip" data-stance="support" data-intensity="2">ALIGNED</span>
+    <span class="stance-chip" data-stance="oppose" data-intensity="2">OPPOSED</span>
+    <span class="stance-chip" data-stance="neutral" data-intensity="2">MIXED</span>
+    <span class="stance-chip">NOT YET ASSESSED</span>
+    <span class="legend-sep"></span>
+    <span class="stance-chip" data-stance="support" data-intensity="1">WEAKLY ALIGNED</span>
+    <span class="stance-chip" data-stance="oppose" data-intensity="1">WEAKLY OPPOSED</span>
+    <span class="legend-note">= faded, intensity 1/3 (any stance)</span>
+    <span class="legend-sep"></span>
+    <span class="stance-chip" data-stance="support" data-intensity="2" data-lowconf="1">LOW CONFIDENCE</span>
+    <span class="legend-note">= dashed, confidence 1/3 (any stance) · exact values on hover</span>
   </div>
 </div>
 
@@ -923,25 +978,39 @@ function setEuaChartWindow(w) {
   renderOverviewView();
 }
 
-function memberCardHTML(entity, depth, allEntities) {
+// `anchor` marks the card as the entity's CANONICAL rendering. An MEP can appear three
+// times in this view — pinned as a key MEP under their group, again in the group's ENVI
+// list, and again inside their national delegation — but only the delegation occurrence
+// carries the DOM id and only it is indexed. That is Jonas's rule ("the search should
+// always lead us to the regular path") implemented structurally: there is no tie for the
+// search to break, because the other two occurrences are not addressable. It also keeps
+// the index at exactly one record per person automatically. (Jonas, 3 Aug 2026.)
+function memberCardHTML(entity, depth, allEntities, anchor, ancestorPath) {
   const dossier = getDossier();
   const indentStyle = ` style="margin-left:${depth * 16}px"`;
+  const path = ancestorPath || [];
 
   let expandHTML = '';
   let nestedHTML = '';
   if (entity.isDelegation && allEntities) {
     const meps = sortMepsForDossier(allEntities.filter(c => c.parentId === entity.id && !c.hideFromList));
+    // Registered whether or not the delegation is currently open — the index must know
+    // about every MEP, and this is the same pass that decides the ordering.
+    if (anchor) {
+      const mepPath = [...path, entity.id];
+      meps.forEach(m => instIndexAdd(m, m.name, `${m.group || ''}${m.country ? ' · ' + m.country : ''}`.trim(), 'mep', mepPath));
+    }
     if (meps.length > 0) {
       const isExpanded = !!expandState[entity.id];
       expandHTML = `<button class="expand-toggle" onclick="toggleExpand('${entity.id}')">${isExpanded ? '▾ Hide' : '▸ Show'} ${meps.length} MEPs</button>`;
       if (isExpanded) {
-        nestedHTML = meps.map(m => memberCardHTML(m, depth + 1, allEntities)).join('');
+        nestedHTML = meps.map(m => memberCardHTML(m, depth + 1, allEntities, anchor, [...path, entity.id])).join('');
       }
     }
   }
 
   return `
-    <div class="stakeholder-card member-card"${indentStyle}>
+    <div class="stakeholder-card member-card"${anchor ? ` id="inst-node-${entity.id}"` : ''}${indentStyle}>
       <div class="stakeholder-top">
         <span class="stakeholder-name">${entity.name}${govSuffixHTML(entity)}</span>
         <span class="stakeholder-tag">${entity.group}${entity.country && entity.country !== '—' ? ' · ' + entity.country : ''}</span>
@@ -954,8 +1023,9 @@ function memberCardHTML(entity, depth, allEntities) {
   `;
 }
 
-function entityCardHTML(entity, allEntities, depth) {
+function entityCardHTML(entity, allEntities, depth, ancestorPath) {
   const dossier = getDossier();
+  const path = ancestorPath || [];
   const membersHTML = entity.members ? `<div class="bloc-members">${entity.members.map(mem => `${mem.name} — ${mem.role}`).join('<br>')}</div>` : '';
 
   // Top-level group cards get two SEPARATE child sections: always-visible key MEPs, and an
@@ -964,7 +1034,7 @@ function entityCardHTML(entity, allEntities, depth) {
   let delegationSectionHTML = '';
   if (depth === 0 && entity.isGroupType) {
     const keyMEPs = allEntities.filter(c => c.isKeyMEP && c.group === entity.group);
-    keyMEPsHTML = keyMEPs.map(m => memberCardHTML(m, 1, allEntities)).join('');
+    keyMEPsHTML = keyMEPs.map(m => memberCardHTML(m, 1, allEntities, false)).join('');
 
     const enviNode = allEntities.find(c => c.isEnviMembersNode && c.parentId === entity.id);
     // ENVI dropdown = every permanent ENVI-tagged entity belonging to this group, wherever it
@@ -980,7 +1050,7 @@ function entityCardHTML(entity, allEntities, depth) {
       const enviToggleId = enviNode ? enviNode.id : `${entity.id}-envi-members`;
       const isEnviExpanded = !!expandState[enviToggleId];
       const enviToggleHTML = `<button class="expand-toggle envi-members-toggle" onclick="toggleExpand('${enviToggleId}')">${isEnviExpanded ? '▾ Hide' : '▸ Show'} ${enviCombined.length} ENVI Members</button>`;
-      const enviMembersHTML = isEnviExpanded ? enviCombined.map(m => memberCardHTML(m, 1, allEntities)).join('') : '';
+      const enviMembersHTML = isEnviExpanded ? enviCombined.map(m => memberCardHTML(m, 1, allEntities, false)).join('') : '';
       enviSectionHTML = enviToggleHTML + enviMembersHTML;
     }
 
@@ -1004,10 +1074,20 @@ function entityCardHTML(entity, allEntities, depth) {
       const moreKey = `${entity.id}-more-delegations`;
       const moreOpen = !!expandState[moreKey];
       const toggleHTML = `<button class="expand-toggle" onclick="toggleExpand('${entity.id}')">${isExpanded ? '▾ Hide' : '▸ Show'} ${delegations.length} national delegations</button>`;
+      // Index every delegation and, through it, every MEP — regardless of what is open.
+      stagedDelegs.forEach(d => {
+        instIndexAdd(d, d.name, `${entity.name} · ${allEntities.filter(m => m.parentId === d.id).length} MEPs`, 'delegation', [...path, entity.id]);
+        memberCardHTML(d, 1, allEntities, true, [...path, entity.id]);
+      });
+      restDelegs.forEach(d => {
+        instIndexAdd(d, d.name, `${entity.name} · ${allEntities.filter(m => m.parentId === d.id).length} MEPs`, 'delegation', [...path, entity.id, moreKey]);
+        memberCardHTML(d, 1, allEntities, true, [...path, entity.id, moreKey]);
+      });
       let delegationsHTML = '';
       if (isExpanded) {
         const visible = moreOpen ? [...stagedDelegs, ...restDelegs] : stagedDelegs;
-        delegationsHTML = visible.map(d => memberCardHTML(d, 1, allEntities)).join('');
+        delegationsHTML = visible.map(d => memberCardHTML(d, 1, allEntities, true,
+          stagedDelegs.indexOf(d) !== -1 ? [...path, entity.id] : [...path, entity.id, moreKey])).join('');
         if (restDelegs.length) {
           delegationsHTML += `<button class="expand-toggle expand-toggle--nested" onclick="toggleExpand('${moreKey}')">${moreOpen
             ? `▾ Hide ${restDelegs.length} further delegations`
@@ -1022,8 +1102,15 @@ function entityCardHTML(entity, allEntities, depth) {
   const cardClass = depth === 0 ? (entity.isGroupType ? 'stakeholder-card group-card' : 'stakeholder-card') : 'stakeholder-card member-card';
   const indentStyle = depth > 0 ? ` style="margin-left:${depth * 16}px"` : '';
 
+  if (depth === 0) {
+    instIndexAdd(entity, entity.name,
+      entity.isGroupType ? `EP political group · ${entity.weight} seats`
+                         : (entity.country && entity.country !== '—' ? entity.country : (entity.group || '')),
+      entity.isGroupType ? 'group' : (entity.country && entity.country !== '—' ? 'council' : 'dg'), path);
+  }
+
   const ownCard = `
-    <div class="${cardClass}"${indentStyle}>
+    <div class="${cardClass}"${depth === 0 ? ` id="inst-node-${entity.id}"` : ''}${indentStyle}>
       <div class="stakeholder-top">
         <span class="stakeholder-name">${entity.name}${govSuffixHTML(entity)}</span>
         <span class="stakeholder-tag">${entity.group}${entity.country && entity.country !== '—' ? ' · ' + entity.country : ''}</span>
@@ -1170,9 +1257,14 @@ function institutionPanelHTML(inst) {
     hiddenCount = secondaryGroups.length;
     hiddenLabel = 'member states (not individually tracked)';
     const visibleGroups = showAll ? groups : primaryGroups;
+    // Secondary (not individually tracked) states sit behind the institution's own
+    // "Show all", so their search path has to carry that key too.
+    secondaryGroups.forEach(g => topEntities.filter(e => e[inst.groupByField] === g)
+      .forEach(e => { if (!showAll) entityCardHTML(e, inst.entities, 0, [showAllKey]); }));
     bodyHTML = visibleGroups.map(g => {
       const inGroup = topEntities.filter(e => e[inst.groupByField] === g);
-      return `<div class="country-header">${g}</div>` + inGroup.map(e => entityCardHTML(e, inst.entities, 0)).join('');
+      const gPath = (!showAll || primaryGroups.indexOf(g) !== -1) ? [] : [showAllKey];
+      return `<div class="country-header">${g}</div>` + inGroup.map(e => entityCardHTML(e, inst.entities, 0, gPath)).join('');
     }).join('');
   } else if (inst.id === 'ep') {
     const primary = topEntities.filter(e => !EP_SECONDARY_GROUP_IDS.has(e.id));
@@ -1180,9 +1272,11 @@ function institutionPanelHTML(inst) {
     hiddenCount = secondary.length;
     hiddenLabel = 'political groups';
     const visible = showAll ? topEntities : primary;
-    bodyHTML = visible.map(e => entityCardHTML(e, inst.entities, 0)).join('');
+    if (!showAll) secondary.forEach(e => entityCardHTML(e, inst.entities, 0, [showAllKey]));
+    bodyHTML = visible.map(e => entityCardHTML(e, inst.entities, 0,
+      EP_SECONDARY_GROUP_IDS.has(e.id) ? [showAllKey] : [])).join('');
   } else {
-    bodyHTML = topEntities.map(e => entityCardHTML(e, inst.entities, 0)).join('');
+    bodyHTML = topEntities.map(e => entityCardHTML(e, inst.entities, 0, [])).join('');
   }
 
   const showAllHTML = hiddenCount > 0
@@ -1226,9 +1320,10 @@ function equalizeDonutBoxHeights(containerSelector) {
 function renderInstitutionView() {
   const dossier = getDossier();
   const container = document.getElementById('institutionView');
-  container.innerHTML = `<div class="institution-grid">` +
-    dossier.institutions.map(inst => institutionPanelHTML(inst)).join('') +
-    `</div>`;
+  // Reset before the panels run: they populate the index as they decide their staging.
+  instIndexReset();
+  const panels = dossier.institutions.map(inst => institutionPanelHTML(inst)).join('');
+  container.innerHTML = sdbSearchBoxHTML('inst') + `<div class="institution-grid">` + panels + `</div>`;
   requestAnimationFrame ? requestAnimationFrame(() => equalizeDonutBoxHeights('#institutionView')) : equalizeDonutBoxHeights('#institutionView');
 }
 
@@ -1291,11 +1386,11 @@ function institutionMandateTagHTML(inst) {
   return mandateTagHTML(inst.mandate, '');
 }
 
-function topicRowHTML(entity, topicId, extraClass) {
+function topicRowHTML(entity, topicId, extraClass, nodeId, indent) {
   const s = entity.stances[topicId];
   const l = stanceLabelText(s);
   return `
-    <div class="topic-stakeholder-row ${extraClass || ''}">
+    <div class="topic-stakeholder-row ${extraClass || ''}"${nodeId ? ` id="topic-node-${nodeId}"` : ''}${indent ? ` style="margin-left:${indent}px"` : ''}>
       <div><div class="tsr-name">${entity.name}${govSuffixHTML(entity)}</div><div class="tsr-role">${entity.group}${entity.country && entity.country !== '—' ? ' · ' + entity.country : ''}</div></div>
       <div class="stance-indicator">
         <div class="signal-bars">${[1,2,3].map(i => `<div class="signal-bar" style="background:${i<=l.bars?`var(--${l.cls==='unclear'?'unclear':l.cls})`:'var(--border)'}"></div>`).join('')}</div>
@@ -1310,13 +1405,15 @@ function renderTopicView(topicId) {
   const topic = dossier.topics.find(t => t.id === topicId);
   const container = document.getElementById('topicView');
 
+  topicIndexReset();
   const donutRow = `<div class="donut-grid">${dossier.institutions.map(inst => institutionTopicHTML(inst, topicId)).join('')}</div>`;
 
   container.innerHTML = `
     <div class="topic-view-header">
       <div class="topic-title">${topic.code} — ${topic.label}</div>
-      <div class="topic-desc">Weighted alignment per institution (top). EP shows groups + key tracked MEPs — national delegation detail is in "By Institution" (expandable).</div>
+      <div class="topic-desc">Weighted alignment per institution (top), then every stakeholder's own position on this topic with intensity and confidence — the only view that shows those two. Groups and key MEPs are visible by default; national delegations and their MEPs are one click away, or search for anyone directly. Rows show personally sourced positions only, never inherited ones, so "not assessed" means this actor has not been recorded on this topic.</div>
     </div>
+    ${sdbSearchBoxHTML('topic')}
     ${donutRow}
     <div class="topic-columns">
       ${dossier.institutions.map(inst => {
@@ -1329,8 +1426,10 @@ function renderTopicView(topicId) {
         if (inst.groupByField) {
           const key = `topic-rest-${inst.id}`;
           const open = !!expandState[key];
-          rows = primary.map(e => topicRowHTML(e, topicId, '')).join('');
-          if (open) rows += secondary.map(e => topicRowHTML(e, topicId, '')).join('');
+          primary.forEach(e => topicIndexAdd(e, e.name, `${inst.label} · ${e.country || ''}`.trim(), 'council', []));
+          secondary.forEach(e => topicIndexAdd(e, e.name, `${inst.label} · ${e.country || ''}`.trim(), 'council', [key]));
+          rows = primary.map(e => topicRowHTML(e, topicId, '', e.id)).join('');
+          if (open) rows += secondary.map(e => topicRowHTML(e, topicId, '', e.id)).join('');
           if (secondary.length) {
             rows += `<div class="cd-expand-toggle" onclick="toggleExpand('${key}'); renderTopicView('${topicId}');">${open
               ? `▾ Hide ${secondary.length} further member states`
@@ -1340,17 +1439,77 @@ function renderTopicView(topicId) {
           // Same staging as "By Institution": the four groups E.ON does not routinely engage
           // (PfE, ESN, The Left, Non-attached) sit behind an expander rather than being shown
           // by default. For the Commission this filter matches nothing, so no toggle appears.
-          const renderGroup = e => {
+          // EP column completed (Jonas, 3 Aug 2026). It used to stop at groups plus the eight
+          // key MEPs, so this view — the ONLY one that shows intensity and confidence per actor
+          // — offered that detail for 8 of 719 MEPs and for no national delegation at all, while
+          // Council already exposed all 27 states behind an expander. The default view is
+          // deliberately unchanged; everything new sits behind the same staged expanders used in
+          // "By Institution", so nobody's existing reading of the page shifts.
+          // NOTE: this branch serves the EP *and* the Commission — anything without a
+          // groupByField lands here — so the index label and kind are derived from the
+          // institution. Hardcoding "EP political group" mislabelled Cabinet Hoekstra and
+          // DG CLIMA in the search dropdown.
+          const isEP = inst.id === 'ep';
+          const renderGroup = (e, groupPath) => {
             const keyMEPs = inst.entities.filter(c => c.isKeyMEP && c.group === e.group);
-            return topicRowHTML(e, topicId, keyMEPs.length ? 'is-group' : '') +
+            topicIndexAdd(e, e.name,
+              isEP ? `EP political group · ${e.weight} seats` : inst.label,
+              isEP ? 'group' : 'dg', groupPath);
+            // Key MEPs keep their pinned position but carry NO anchor: like "By Institution",
+            // the searchable occurrence of a person is the one inside their national delegation.
+            let html = topicRowHTML(e, topicId, keyMEPs.length ? 'is-group' : '', e.id) +
               keyMEPs.map(c => topicRowHTML(c, topicId, 'is-member')).join('');
+
+            const delegations = inst.entities.filter(c => c.isDelegation && !c.isEnviMembersNode && c.parentId === e.id);
+            if (delegations.length) {
+              const dKey = `topic-deleg-${e.id}`, dMoreKey = `topic-deleg-${e.id}-more`;
+              const dOpen = !!expandState[dKey], dMoreOpen = !!expandState[dMoreKey];
+              const prim = sortDelegationsBySize(delegations.filter(d => EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country)), inst.entities);
+              const sec = sortDelegationsBySize(delegations.filter(d => !EP_PRIMARY_DELEGATION_COUNTRIES.has(d.country)), inst.entities);
+              const stagedD = prim.length ? prim : sortDelegationsBySize(delegations, inst.entities);
+              const restD = prim.length ? sec : [];
+
+              const indexDeleg = (d, extra) => {
+                const meps = sortMepsForDossier(inst.entities.filter(m => m.parentId === d.id && !m.hideFromList));
+                topicIndexAdd(d, d.name, `${e.name} · ${meps.length} MEPs`, 'delegation', [...groupPath, dKey, ...extra]);
+                meps.forEach(m => topicIndexAdd(m, m.name, `${m.group || ''}${m.country ? ' · ' + m.country : ''}`.trim(),
+                  'mep', [...groupPath, dKey, ...extra, `topic-meps-${d.id}`]));
+              };
+              stagedD.forEach(d => indexDeleg(d, []));
+              restD.forEach(d => indexDeleg(d, [dMoreKey]));
+
+              const delegRow = d => {
+                const meps = sortMepsForDossier(inst.entities.filter(m => m.parentId === d.id && !m.hideFromList));
+                const mKey = `topic-meps-${d.id}`;
+                const mOpen = !!expandState[mKey];
+                let out = topicRowHTML(d, topicId, 'is-member', d.id, 12);
+                if (meps.length) {
+                  out += `<div class="cd-expand-toggle expand-toggle--nested" style="margin-left:24px" onclick="toggleExpand('${mKey}'); renderTopicView('${topicId}');">${mOpen
+                    ? `▾ Hide ${meps.length} MEPs` : `▸ Show ${meps.length} MEPs`}</div>`;
+                  if (mOpen) out += meps.map(m => topicRowHTML(m, topicId, 'is-member', m.id, 24)).join('');
+                }
+                return out;
+              };
+
+              html += `<div class="cd-expand-toggle expand-toggle--nested" onclick="toggleExpand('${dKey}'); renderTopicView('${topicId}');">${dOpen
+                ? `▾ Hide ${delegations.length} national delegations` : `▸ Show ${delegations.length} national delegations`}</div>`;
+              if (dOpen) {
+                html += (dMoreOpen ? [...stagedD, ...restD] : stagedD).map(delegRow).join('');
+                if (restD.length) {
+                  html += `<div class="cd-expand-toggle expand-toggle--nested" style="margin-left:12px" onclick="toggleExpand('${dMoreKey}'); renderTopicView('${topicId}');">${dMoreOpen
+                    ? `▾ Hide ${restD.length} further delegations` : `▸ Show ${restD.length} further delegations`}</div>`;
+                }
+              }
+            }
+            return html;
           };
           const mainGroups = primary.filter(e => !EP_SECONDARY_GROUP_IDS.has(e.id));
           const sideGroups = primary.filter(e => EP_SECONDARY_GROUP_IDS.has(e.id));
           const key = `topic-rest-${inst.id}`;
           const open = !!expandState[key];
-          rows = mainGroups.map(renderGroup).join('');
-          if (open) rows += sideGroups.map(renderGroup).join('');
+          if (!open) sideGroups.forEach(g => renderGroup(g, [key]));
+          rows = mainGroups.map(g => renderGroup(g, [])).join('');
+          if (open) rows += sideGroups.map(g => renderGroup(g, [key])).join('');
           if (sideGroups.length) {
             rows += `<div class="cd-expand-toggle" onclick="toggleExpand('${key}'); renderTopicView('${topicId}');">${open
               ? `▾ Hide ${sideGroups.length} political groups`
@@ -2269,33 +2428,65 @@ function sdbCardHTML(title, meta, bodyHTML, cls, nodeId) {
      search box for people who already know the answer.
    ------------------------------------------------------------------------- */
 
+/* Two indexes, one search implementation. The realm overview and the per-dossier
+   "By Institution" view are different trees with different expand keys, so each gets
+   its own index and its own DOM id prefix — but they share every line of matching,
+   ranking, rendering and jump logic below. Duplicating the search per view is exactly
+   how the delegation sorting silently diverged between these same two views. */
 let _sdbIndex = [];
-let _sdbQuery = '';
-let _sdbActive = -1;
+let _instIndex = [];
+let _topicIndex = [];
+const SEARCH_SCOPES = {
+  sdb:  { index: () => _sdbIndex,  nodePrefix: 'sdb-node-',  rerender: () => renderStakeholderDbView(),
+          placeholder: 'Search any stakeholder — MEP, Member State or DG (min. 2 letters)' },
+  inst: { index: () => _instIndex, nodePrefix: 'inst-node-', rerender: () => renderInstitutionView(),
+          placeholder: 'Search any stakeholder in this dossier — MEP, Member State or DG (min. 2 letters)' },
+  // The topic view re-renders against whichever topic the selector currently holds, so the
+  // rerender closure reads it rather than capturing it — otherwise a jump would silently
+  // bounce the user back to whatever topic was open when the index was built.
+  topic:{ index: () => _topicIndex, nodePrefix: 'topic-node-',
+          rerender: () => renderTopicView(document.getElementById('topicSelect').value),
+          placeholder: 'Search any stakeholder — jump to their position on this topic (min. 2 letters)' }
+};
+const _searchQuery = { sdb: '', inst: '', topic: '' };
+const _searchActive = { sdb: -1, inst: -1, topic: -1 };
 const SDB_MAX_SUGGESTIONS = 8;
 
-function sdbIndexReset() { _sdbIndex = []; }
+function sdbIndexReset()  { _sdbIndex = []; }
+function instIndexReset() { _instIndex = []; }
+function topicIndexReset() { _topicIndex = []; }
 
 // path = expandState keys that must be opened for this node to become visible.
-function sdbIndexAdd(entity, label, sub, kind, path) {
+function searchIndexAdd(target, entity, label, sub, kind, path) {
   if (!entity || !entity.id) return;
-  _sdbIndex.push({
+  // FIRST registration wins, later ones are ignored. This is what makes the "always the
+  // regular path" rule hold in the dossier view: delegations and their MEPs are registered
+  // up-front from the staging loops, so the second pass that renders an expanded group
+  // cannot overwrite a record with a different path. It also makes the index idempotent,
+  // so a tree that renders the same entity more than once can never produce two records.
+  if (target.some(r => r.id === entity.id)) return;
+  target.push({
     id: entity.id, label, sub, kind,
     path: path || [],
     fLabel: foldText(label),
     fSurname: foldText(personSurname(label))
   });
 }
+function sdbIndexAdd(entity, label, sub, kind, path)  { searchIndexAdd(_sdbIndex, entity, label, sub, kind, path); }
+function instIndexAdd(entity, label, sub, kind, path) { searchIndexAdd(_instIndex, entity, label, sub, kind, path); }
+function topicIndexAdd(entity, label, sub, kind, path) { searchIndexAdd(_topicIndex, entity, label, sub, kind, path); }
 
 // Rank: surname prefix beats given-name prefix beats any substring. Within a rank,
 // people before containers before institutions, then alphabetically by surname —
-// so typing "lie" puts Peter LIESE above a delegation whose name merely contains it.
+// so typing "lie" puts Peter Liese above a delegation whose name merely contains it.
 const SDB_KIND_RANK = { mep: 0, council: 1, dg: 2, delegation: 3, group: 4 };
-function sdbSearch(query) {
+function searchScope(scope) { return SEARCH_SCOPES[scope] || SEARCH_SCOPES.sdb; }
+
+function sdbSearch(query, scope) {
   const q = foldText(query).trim();
   if (q.length < 2) return [];
   const hits = [];
-  for (const r of _sdbIndex) {
+  for (const r of searchScope(scope || 'sdb').index()) {
     let score;
     if (r.fSurname.startsWith(q)) score = 0;
     else if (r.fLabel.startsWith(q)) score = 1;
@@ -2326,35 +2517,37 @@ function sdbMarkHTML(label, query) {
          sdbEscape(label.slice(i, i + q.length)) + '</mark>' + sdbEscape(label.slice(i + q.length));
 }
 
-function sdbSearchBoxHTML() {
+function sdbSearchBoxHTML(scope) {
+  const sc = scope || 'sdb';
   return `<div class="sdb-search">
-    <input id="sdbSearchInput" class="sdb-search-input" type="search" autocomplete="off" spellcheck="false"
-      placeholder="Search any stakeholder — MEP, Member State or DG (min. 2 letters)"
-      value="${sdbEscape(_sdbQuery)}"
-      oninput="sdbOnInput(this.value)" onkeydown="sdbOnKeyDown(event)">
-    <div id="sdbSearchResults" class="sdb-search-results" hidden></div>
+    <input id="${sc}SearchInput" class="sdb-search-input" type="search" autocomplete="off" spellcheck="false"
+      placeholder="${sdbEscape(searchScope(sc).placeholder)}"
+      value="${sdbEscape(_searchQuery[sc] || '')}"
+      oninput="sdbOnInput(this.value, '${sc}')" onkeydown="sdbOnKeyDown(event, '${sc}')">
+    <div id="${sc}SearchResults" class="sdb-search-results" hidden></div>
   </div>`;
 }
 
-function sdbRenderSuggestions() {
-  const box = document.getElementById('sdbSearchResults');
+function sdbRenderSuggestions(scope) {
+  const sc = scope || 'sdb';
+  const box = document.getElementById(sc + 'SearchResults');
   if (!box) return;
-  const hits = sdbSearch(_sdbQuery);
+  const hits = sdbSearch(_searchQuery[sc], sc);
   if (!hits.length) {
     box.hidden = true;
     box.innerHTML = '';
-    if (foldText(_sdbQuery).trim().length >= 2) {
+    if (foldText(_searchQuery[sc]).trim().length >= 2) {
       box.hidden = false;
-      box.innerHTML = `<div class="sdb-search-empty">No stakeholder matches “${sdbEscape(_sdbQuery)}”.</div>`;
+      box.innerHTML = `<div class="sdb-search-empty">No stakeholder matches “${sdbEscape(_searchQuery[sc])}”.</div>`;
     }
     return;
   }
   const shown = hits.slice(0, SDB_MAX_SUGGESTIONS);
-  if (_sdbActive >= shown.length) _sdbActive = shown.length - 1;
+  if (_searchActive[sc] >= shown.length) _searchActive[sc] = shown.length - 1;
   box.hidden = false;
-  box.innerHTML = shown.map((r, i) => `<div class="sdb-search-hit${i === _sdbActive ? ' is-active' : ''}"
-      onmousedown="event.preventDefault(); sdbJumpTo('${sdbEscape(r.id)}')">
-      <span class="sdb-hit-label">${sdbMarkHTML(r.label, _sdbQuery)}</span>
+  box.innerHTML = shown.map((r, i) => `<div class="sdb-search-hit${i === _searchActive[sc] ? ' is-active' : ''}"
+      onmousedown="event.preventDefault(); sdbJumpTo('${sdbEscape(r.id)}', '${sc}')">
+      <span class="sdb-hit-label">${sdbMarkHTML(r.label, _searchQuery[sc])}</span>
       <span class="sdb-hit-sub">${sdbEscape(r.sub)}</span>
     </div>`).join('') +
     (hits.length > shown.length
@@ -2362,39 +2555,43 @@ function sdbRenderSuggestions() {
       : '');
 }
 
-function sdbOnInput(v) {
-  _sdbQuery = v;
-  _sdbActive = -1;
-  sdbRenderSuggestions();
+function sdbOnInput(v, scope) {
+  const sc = scope || 'sdb';
+  _searchQuery[sc] = v;
+  _searchActive[sc] = -1;
+  sdbRenderSuggestions(sc);
 }
 
-function sdbOnKeyDown(ev) {
-  const hits = sdbSearch(_sdbQuery).slice(0, SDB_MAX_SUGGESTIONS);
+function sdbOnKeyDown(ev, scope) {
+  const sc = scope || 'sdb';
+  const hits = sdbSearch(_searchQuery[sc], sc).slice(0, SDB_MAX_SUGGESTIONS);
   if (ev.key === 'ArrowDown' && hits.length) {
-    ev.preventDefault(); _sdbActive = (_sdbActive + 1) % hits.length; sdbRenderSuggestions();
+    ev.preventDefault(); _searchActive[sc] = (_searchActive[sc] + 1) % hits.length; sdbRenderSuggestions(sc);
   } else if (ev.key === 'ArrowUp' && hits.length) {
-    ev.preventDefault(); _sdbActive = (_sdbActive <= 0 ? hits.length : _sdbActive) - 1; sdbRenderSuggestions();
+    ev.preventDefault(); _searchActive[sc] = (_searchActive[sc] <= 0 ? hits.length : _searchActive[sc]) - 1; sdbRenderSuggestions(sc);
   } else if (ev.key === 'Enter' && hits.length) {
-    ev.preventDefault(); sdbJumpTo(hits[_sdbActive >= 0 ? _sdbActive : 0].id);
+    ev.preventDefault(); sdbJumpTo(hits[_searchActive[sc] >= 0 ? _searchActive[sc] : 0].id, sc);
   } else if (ev.key === 'Escape') {
-    _sdbQuery = ''; _sdbActive = -1;
-    const el = document.getElementById('sdbSearchInput'); if (el) el.value = '';
-    sdbRenderSuggestions();
+    _searchQuery[sc] = ''; _searchActive[sc] = -1;
+    const el = document.getElementById(sc + 'SearchInput'); if (el) el.value = '';
+    sdbRenderSuggestions(sc);
   }
 }
 
 // Open every ancestor on the record's path, re-render, then scroll to the card and
-// flash it. Re-rendering rebuilds the index, so the lookup is repeated afterwards
-// rather than held across the render — ids are stable, DOM nodes are not.
-function sdbJumpTo(id) {
-  const rec = _sdbIndex.find(r => r.id === id);
+// flash it. Re-rendering rebuilds the index, so the node lookup happens afterwards
+// rather than being held across the render — ids are stable, DOM nodes are not.
+function sdbJumpTo(id, scope) {
+  const sc = scope || 'sdb';
+  const cfg = searchScope(sc);
+  const rec = cfg.index().find(r => r.id === id);
   if (!rec) return;
   rec.path.forEach(k => { expandState[k] = true; });
-  renderStakeholderDbView();
-  const box = document.getElementById('sdbSearchResults');
+  cfg.rerender();
+  const box = document.getElementById(sc + 'SearchResults');
   if (box) { box.hidden = true; box.innerHTML = ''; }
-  _sdbActive = -1;
-  const node = document.getElementById('sdb-node-' + id);
+  _searchActive[sc] = -1;
+  const node = document.getElementById(cfg.nodePrefix + id);
   if (!node) return;
   node.scrollIntoView({ block: 'center', behavior: 'smooth' });
   node.classList.add('sdb-hit-flash');
@@ -3450,7 +3647,7 @@ function boot() {
   populateTopicSelect();
   populateTopicKey();
   document.getElementById('footer').innerHTML =
-    `TOPIC CHIPS: colored = assessed stance (hover for detail, intensity, confidence & source) · dim = not yet assessed · dashed border = confidence 1/3.<br>` +
+    `TOPIC CHIPS: colour = stance, faded = intensity 1/3, dashed border = confidence 1/3 — the last two apply to any stance. Dim grey = not yet assessed. Hover any chip for the exact intensity, confidence and source. See the key above the view tabs.<br>` +
     `WEIGHTING DATA (PRIMARY SOURCES): EP seat counts — europarl.europa.eu live MEP table (fetched 6 Jul 2026; 719 of 720 seats filled, 1 vacancy). Council population shares — Eurostat, population on 1 Jan 2025 (released Jul 2025), EU-27 total 450.38m. Untracked EP non-attached members and untracked Member States still count toward pie totals as "no data" — see role text on hidden entities for detail.<br>` +
     `ARCHITECTURE: three configuration levels — Level 1 TOOL_CONFIG (tool-wide conventions), Level 2 REALMS (EU / DE policy, each with its own legislature, procedure and stakeholder universe), Level 3 the dossier itself (E.ON priorities, stakeholders, milestones). The renderer is generic: new dossiers are added as data only, no code changes required. The realm-wide Stakeholder Overview is derived live from the dossiers, so it grows automatically as dossiers are added.<br>` +
     `SOURCE OF TRUTH: Claude Project memory. Regenerate this file after each briefing to keep it current.`;
