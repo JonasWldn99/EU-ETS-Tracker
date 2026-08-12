@@ -927,10 +927,21 @@
 
 <div class="controls">
   <div class="view-toggle">
+    <!-- Overview is its own cluster, not a member of "Stakeholder Positions"
+         (Jonas, 12 Aug 2026). The page long ago stopped being a stakeholder
+         view: it now carries the Headline of the Day, the EUA price, the
+         executive heatmap, the Next Steps timeline and the background. The
+         grouping label had simply not kept up with what the page became.
+         It remains the default landing view -- only the grouping changed. -->
+    <div class="view-cluster">
+      <span class="view-cluster-label">At a Glance</span>
+      <div class="view-cluster-buttons">
+        <button class="active" data-view="overview">Overview</button>
+      </div>
+    </div>
     <div class="view-cluster">
       <span class="view-cluster-label">Stakeholder Positions</span>
       <div class="view-cluster-buttons">
-        <button class="active" data-view="overview">Overview</button>
         <button data-view="institution">By Institution</button>
         <button data-view="topic">By Topic</button>
       </div>
