@@ -11,6 +11,11 @@
     --border: #383F4C; --text-primary: #E8E6E1; --text-secondary: #9AA0AC; --text-tertiary: #6B7280;
     --ep: #D4A24C; --comm: #5B84B1; --council: #4C9A8C; --events: #A97CC9;
     --support: #7FB069; --oppose: #C1554B; --neutral: #8B93A3; --unclear: #4A5160;
+    /* The "now" line on the Next Steps timeline. A red of its OWN: --oppose
+       (#C1554B) and --tone-notenough (#E0453B) mean opposition tool-wide, so
+       reusing either would make a temporal marker read as a position
+       (§144/§172). Brighter and pinker than both, so they stay separable. */
+    --today: #FF4D5E;
     --tone-toofar: #E8998D; --tone-notenough: #E0453B;
     /* Coverage ring. Deliberately a low-saturation family of its own: grey would collide with
        --neutral ("Mixed reaction") in the inner chart, and any saturated hue would compete with the
@@ -712,7 +717,15 @@
     .headline-also-label { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: 4px; }
     .headline-also-list { margin: 0; padding-left: 15px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; }
     .headline-also-list li { margin-bottom: 3px; }
-    .headline-history { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .headline-sources { margin-top: 8px; }
+  .headline-sources-list {
+    list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px;
+    border-left: 2px solid var(--border); padding-left: 10px;
+  }
+  .headline-sources-list li { font-family: var(--font-mono); font-size: 9.5px; line-height: 1.5; color: var(--text-tertiary); }
+  .headline-sources-list a { color: var(--text-tertiary); text-decoration: underline; text-underline-offset: 2px; }
+  .headline-sources-list a:hover { color: var(--text-secondary); }
+  .headline-history { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
   .headline-history-toggle {
     cursor: pointer; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
     letter-spacing: 0.05em; color: var(--text-tertiary); user-select: none;
@@ -723,6 +736,138 @@
   .headline-history-item:last-child { border-bottom: none; padding-bottom: 0; }
   .headline-history-date { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-bottom: 3px; }
   .headline-history-text { font-size: 12px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 4px; }
+
+  /* ---- Next Steps timeline (Zeitstrahl) --------------------------------
+     Board-facing overview strip. Design intent: ONE fat central rail as the
+     visual anchor, with events alternating above and below it -- so the eye
+     lands on the timeline first and the labels hang off it, rather than a
+     scatter of chips above a hairline (which is what passes 1 and 2 looked
+     like). Strictly linear: x is real elapsed time, never compressed or evenly
+     spaced. Density is handled by importance tiering and by using both sides
+     of the rail, never by bending the axis.
+     Deliberately quiet: no full-height gridlines, no borders on confirmed
+     chips, one accent per element. Fixed height, no SVG, nothing flex-grows,
+     so the §182 distortion trap cannot apply. */
+  .tl-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 26px 12px; margin-bottom: 14px;
+  }
+  .tl-body { display: flex; align-items: flex-start; gap: 0; }
+  .tl-linear { position: relative; flex: 1 1 auto; min-width: 0; }
+
+  /* The rail itself -- the thing that was missing. */
+  .tl-rail {
+    position: absolute; left: 0; right: 0; border-radius: 8px; overflow: hidden;
+    background: var(--surface-raised);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 3px rgba(0,0,0,0.35);
+  }
+  .tl-notch { position: absolute; top: 0; bottom: 0; width: 12px; margin-left: -6px; cursor: pointer; }
+  .tl-notch i { position: absolute; left: 5px; top: 3px; bottom: 3px; width: 2px; border-radius: 1px; opacity: 0.9; }
+  .tl-notch:hover i { top: 0; bottom: 0; width: 3px; left: 4.5px; }
+  .tl-notch.provisional i { opacity: 0.45; }
+  .tl-notch.past i { opacity: 0.4; }
+  .tl-marker.past { opacity: 0.45; box-shadow: 0 0 0 3px var(--surface-raised); }
+  /* Three steps of prominence, and the rule behind them is stateable:
+     .key       a formal step of the ordinary legislative procedure
+     .secondary tracked and labelled, but not a step in the procedure
+     .tl-notch  working level -- hover only                          */
+  .tl-marker {
+    position: absolute; top: 50%; border-radius: 50%;
+    transform: translate(-50%, -50%); cursor: pointer;
+    box-shadow: 0 0 0 3px var(--surface-raised), 0 1px 4px rgba(0,0,0,0.5);
+  }
+  .tl-marker.key { width: 14px; height: 14px; }
+  .tl-marker.secondary { width: 9px; height: 9px; opacity: 0.9; }
+  .tl-marker.multi { width: 18px; height: 18px; }
+  .tl-marker.provisional { background: var(--surface-raised) !important; border: 2.5px solid currentColor; }
+  .tl-marker:hover { transform: translate(-50%, -50%) scale(1.18); }
+
+  .tl-months { position: absolute; left: 0; right: 0; }
+  .tl-mtick { position: absolute; top: 0; width: 1px; height: 5px; background: rgba(107,114,128,0.5); }
+  .tl-mlabel {
+    position: absolute; top: 7px; transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  /* Runs the full height of the strip and cuts across the rail, so "where are
+     we" is answered before a single label is read. z-index 1 puts it above the
+     rail and below the chips. */
+  .tl-now {
+    position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px;
+    background: var(--today); opacity: 0.8; z-index: 1;
+    box-shadow: 0 0 7px rgba(255,77,94,0.45);
+  }
+  .tl-now-label {
+    position: absolute; transform: translateX(-50%); white-space: nowrap; z-index: 2;
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.13em;
+    color: var(--bg); background: var(--today); padding: 2px 8px; border-radius: 5px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+  }
+
+  .tl-leader { position: absolute; width: 1px; background: rgba(154,160,172,0.4); }
+
+  /* Chips: no box on confirmed items -- the weak/uncertain case is the one that
+     gets marked (§172), so only provisional carries a dashed outline. */
+  .tl-chip {
+    position: absolute; transform: translateX(-50%); cursor: pointer; text-align: center;
+    padding: 3px 9px; border-radius: 7px; white-space: nowrap; max-width: 215px; z-index: 2;
+    border: 1px solid transparent;
+  }
+  .tl-chip:hover { background: var(--surface-raised); border-color: var(--border); z-index: 3; }
+  .tl-chip.provisional { border: 1px dashed var(--tlc); opacity: 0.92; }
+  /* A completed milestone keeps its INSTITUTION colour. Green would be a second
+     meaning on a channel already spoken for -- the ✓ carries completion on its
+     own, and is then the only green on the strip. In the columns below, green
+     text is correct for the inverse reason: there the institution is encoded by
+     WHICH COLUMN the row sits in, so colour is free to mean status. §172 permits
+     a justified difference; this is one, and the justification is the encoding. */
+  .tl-chip.occurred { background: transparent; }
+  .tl-chip-date {
+    display: block; font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    letter-spacing: 0.04em; color: var(--tlc); margin-bottom: 1px;
+  }
+  .tl-chip-label {
+    display: block; font-size: 11px; font-weight: 600; line-height: 1.25; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  /* A non-procedural event is still fully legible, just quieter: lighter weight,
+     secondary text colour. The weak/subordinate case is the marked one (§172). */
+  .tl-chip.secondary .tl-chip-label { font-size: 10.5px; font-weight: 500; color: var(--text-secondary); }
+  .tl-chip.secondary .tl-chip-date { opacity: 0.8; }
+  .tl-chip.key .tl-chip-label { font-weight: 700; }
+
+  .tl-check { margin-right: 3px; color: var(--support); }
+
+  /* Detached end-cap: the dashed rail and the explicit label are what keep an
+     off-scale marker honest (§185.1). */
+  .tl-endcap { position: relative; flex: 0 0 176px; margin-left: 22px; padding-left: 22px; border-left: 1px dashed var(--border); }
+  .tl-endcap-rail { position: absolute; left: 22px; right: 0; border-radius: 8px; border: 1px dashed var(--border); }
+  .tl-endcap-chip { position: absolute; left: 50%; }
+  .tl-endcap-note {
+    position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; color: var(--text-tertiary); font-style: italic;
+  }
+
+  .tl-legend {
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding-top: 12px; margin-top: 14px;
+    border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.04em; color: var(--text-tertiary);
+  }
+  .tl-legend-item { display: flex; align-items: center; gap: 6px; }
+  .tl-legend-hint { margin-left: auto; font-style: italic; }
+  .tl-legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); display: inline-block; }
+  .tl-legend-dot.key { width: 11px; height: 11px; background: var(--text-secondary); }
+  .tl-legend-notch { width: 2px; height: 11px; background: var(--text-secondary); display: inline-block; }
+  .tl-legend-swatch { width: 16px; height: 11px; border: 1px dashed var(--text-tertiary); border-radius: 3px; display: inline-block; }
+
+  .milestone-row.tl-flash, .milestone-joint-row.tl-flash { animation: tlFlash 2.2s ease-out 1; border-radius: 6px; }
+  @keyframes tlFlash {
+    /* Neutral wash, not amber: amber is --ep = Parliament in this very section,
+       and a highlight that reads as an institution colour is a §144 collision. */
+    0%, 55% { background: rgba(232,230,225,0.13); box-shadow: 0 0 0 6px rgba(232,230,225,0.06); }
+    100%    { background: transparent; box-shadow: none; }
+  }
+  @media (max-width: 1100px) { .tl-wrap { display: none; } }
 
   .milestone-cols { display: grid; grid-template-columns: 3fr 3fr 3fr 2.2fr; gap: 12px; margin-bottom: 4px; }
   @media (max-width: 900px) { .milestone-cols { grid-template-columns: 1fr; } }
@@ -1984,6 +2129,32 @@ function headlineSourceHTML(h) {
     : (h.sourceLabel || '');
 }
 
+// Sources for the lead entry: EVERY source the entry rests on is kept, but the
+// list is collapsed behind a button so it costs no vertical space by default
+// (Jonas, 12 Aug 2026). This is the staged-expansion idiom (§130) applied to
+// attribution -- more consistent than showing one source and dropping the rest,
+// which is what §195 had settled on before.
+// NOTE this is NOT a reintroduction of the `fullBriefing` toggle removed in
+// §182: that was a second version of the ANALYSIS, and Jonas's "just make one
+// version" stands. Attribution is not analysis.
+function headlineSourcesHTML(h) {
+  const list = Array.isArray(h.sources) && h.sources.length
+    ? h.sources
+    : (h.sourceLabel ? [{ label: h.sourceLabel, url: h.sourceUrl }] : []);
+  if (!list.length) return '';
+  const open = !!expandState['headline-sources'];
+  const item = s => s.url
+    ? `<a href="${s.url}" target="_blank" rel="noopener">${s.label} ↗</a>`
+    : s.label;
+  return `
+      <div class="headline-sources">
+        <div class="headline-history-toggle" onclick="toggleExpand('headline-sources'); renderOverviewView();">
+          <span class="expand-toggle">${open ? '▾ Hide sources' : `▸ Show sources (${list.length})`}</span>
+        </div>
+        ${open ? `<ul class="headline-sources-list">${list.map(s => `<li>${item(s)}</li>`).join('')}</ul>` : ''}
+      </div>`;
+}
+
 function renderHeadlineOfDayCard(ov) {
   // ov.headlineOfDay is a rolling array of weekday entries, most recent first (max 5 kept -- one working week).
   // Back-compat: if an older single-object shape is ever encountered, wrap it into a 1-item array.
@@ -2019,7 +2190,7 @@ function renderHeadlineOfDayCard(ov) {
       <div class="headline-summary">${h.summary || ''}</div>
       ${alsoHTML}
       <div class="headline-impact">${h.impactNote || ''}</div>
-      <div class="headline-source">${headlineSourceHTML(h)}</div>
+      ${headlineSourcesHTML(h)}
       ${historyHTML}
     </div>`;
 }
@@ -2071,7 +2242,7 @@ function renderOverviewView() {
     const titleHTML = m.url ? `<a href="${m.url}" target="_blank" rel="noopener">${check}${m.title} ↗</a>` : `${check}${m.title}`;
     if (joint) {
       return `
-        <div class="milestone-joint-row${occurred ? ' occurred' : ''}">
+        <div class="milestone-joint-row${occurred ? ' occurred' : ''}" id="mrow-${m.mid || ''}">
           <div class="milestone-date">${m.date}</div>
           <div class="milestone-body">
             <div class="milestone-title">${titleHTML}</div>
@@ -2081,7 +2252,7 @@ function renderOverviewView() {
         </div>`;
     }
     return `
-      <div class="milestone-row${occurred ? ' occurred' : ''}">
+      <div class="milestone-row${occurred ? ' occurred' : ''}" id="mrow-${m.mid || ''}">
         <div class="milestone-date">${m.date}</div>
         <div class="milestone-title">${titleHTML}</div>
         <div class="milestone-status">${m.status}</div>
@@ -2090,6 +2261,220 @@ function renderOverviewView() {
   }
 
   function sortByDate(a, b) { return (a.date || '').localeCompare(b.date || ''); }
+
+  /* ---- Zeitstrahl -----------------------------------------------------
+     One immediate-overview strip above the four columns. EU institutions only:
+     Public Events in BXL are deliberately excluded (they are not steps in the
+     procedure). The axis is STRICTLY LINEAR -- position is real time, so the
+     September pile-up is visible as a pile-up, which is the point. Readability
+     comes from tiering, not from bending the axis:
+       tier 1  labelled chip in a lane + dot on the axis  (proposals, draft
+               reports, committee/plenary votes, Environment Councils, the
+               target agreement)
+       tier 2  bare tick, title on hover  (working-party sessions, expert
+               talks, procedural referrals, administrative deadlines)
+     Provisional dates (expected / forecast / target / pending) render DASHED,
+     matching the tool's standing convention for thin evidence (§172/§163) --
+     never solid, because a forecast that looks like a confirmed date is a
+     §185.1 error on the most-read surface in the tool. Occurred items are
+     green with a check, matching the box rows below (§172).
+     Positions are percentages on a plain absolutely-positioned div, not an
+     SVG: nothing here scales with height, so the §182 preserveAspectRatio
+     distortion trap cannot apply. */
+  function renderNextStepsTimeline(ov) {
+    // tlOmit: deliberately off the strip (recorded in the data with a reason,
+    // rather than silently dropped by removing tlStart).
+    const items = (ov.milestones || []).filter(m => m.tlStart && !m.tlOmit);
+    if (!items.length) return '';
+    const AXIS_FROM = '2026-07-05';
+    const dayNum = iso => Math.floor(Date.parse(iso + 'T00:00:00Z') / 86400000);
+    // Linear axis carries DATED events only; a fuzzy quarter-wide target sits in
+    // a detached, explicitly "not to scale" end-cap rather than stretching the
+    // axis four months for one marker. Nothing ON the axis is ever compressed.
+    const onAxis  = items.filter(m => !m.tlOffScale);
+    const offAxis = items.filter(m => m.tlOffScale);
+    const lastEnd = onAxis.map(m => m.tlEnd || m.tlStart).sort().pop();
+    // Twelve days of headroom at the end (and nine days before the first event)
+    // keep the outermost markers around 7% / 93%, so EVERY chip can be centred
+    // on its own marker. That is what guarantees the leader line meets the
+    // label -- the edge-anchoring special case it replaces left the 11 Dec
+    // chip visibly detached from its line.
+    const from = dayNum(AXIS_FROM), to = dayNum(lastEnd) + 12;
+    const span = Math.max(1, to - from);
+    const pct  = iso => ((dayNum(iso) - from) / span) * 100;
+    const clamp = v => Math.max(0, Math.min(100, v));
+    // A time span is represented by placing its marker at the MIDPOINT of the
+    // span, not by colouring the rail (Jonas, 12 Aug 2026). Simpler to read and
+    // it removes the band/marker colour ambiguity at source. The full range
+    // stays in the hover text and in the card below.
+    const midPct = m => m.tlEnd ? (pct(m.tlStart) + pct(m.tlEnd)) / 2 : pct(m.tlStart);
+
+    // ---- effective tier: the past thins itself out, automatically -----------
+    // Once an event has happened it keeps a labelled chip ONLY if it is a key
+    // milestone (a formal step of the OLP, §194). Everything else drops to a
+    // working-level notch as it moves into the past, so the strip stays about
+    // what is ahead without ever losing the record (Jonas, 12 Aug 2026).
+    // Computed at RENDER time from the real current date, so it happens on its
+    // own with every morning update -- no field to maintain and nothing to
+    // forget. A provisional date that has merely slipped is NOT treated as past.
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const isPast = m => !!m.occurred || (!m.tlProvisional && (m.tlEnd || m.tlStart) < todayISO);
+    const effTier = m => (m.tlTier === 2 && isPast(m)) ? 3 : m.tlTier;
+
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const colourOf = m => m.institution === 'joint' ? 'var(--neutral)'
+                        : `var(${(MILESTONE_INST_META[m.institution] || {}).colorVar || '--neutral'})`;
+
+    // Geometry. The rail is the visual anchor -- fat, centred, everything else
+    // hangs off it. Events alternate ABOVE and BELOW, which halves the stack
+    // depth and makes the layout read as designed rather than as a pile.
+    const LANE_H = 36, CHIP_H = 32, RAIL_H = 14, MONTH_BAND = 20, GAP = 9, CHIP_W_PER_CHAR = 0.60;
+
+    // ---- group tier-1 items sharing a moment into one chip -----------------
+    const groups = [], byGroup = {};
+    onAxis.filter(m => effTier(m) <= 2).sort((p, q) => p.tlStart.localeCompare(q.tlStart)).forEach(m => {
+      if (!m.tlGroup) { groups.push({ members: [m], lead: m }); return; }
+      if (!byGroup[m.tlGroup]) { byGroup[m.tlGroup] = { members: [], lead: null }; groups.push(byGroup[m.tlGroup]); }
+      byGroup[m.tlGroup].members.push(m);
+      if (m.tlGroupLead || !byGroup[m.tlGroup].lead) byGroup[m.tlGroup].lead = m;
+    });
+    groups.forEach(g => {
+      const xs = g.members.map(midPct);
+      g.x = clamp(xs.reduce((a, b) => a + b, 0) / xs.length);
+      g.label = g.lead.tlLabel || g.lead.title;
+      // tlDateText is a short, board-legible rendering ("10 Sep (expected)");
+      // the card below keeps the full free-text date, which carries nuance no
+      // short form can ("2026-09-01/02/10").
+      g.dateText = g.lead.tlDateText || g.lead.date;
+      g.key = effTier(g.lead) === 1;   // formal step of the ordinary legislative procedure
+      g.occurred = g.members.every(m => m.occurred);
+      g.provisional = g.members.some(m => m.tlProvisional);
+      // ONE colour per milestone, and it encodes the INSTITUTION -- on the chip
+      // exactly as on the rail. Completion is carried by the ✓ alone (§198).
+      g.colour = colourOf(g.lead);
+      g.title = g.members.map(m => m.date + ' — ' + m.title).join('  |  ');
+      // Every chip is centred on its marker, without exception: the leader line
+      // then runs straight from the marker to the middle of the label. The axis
+      // window above is sized so that no chip needs anchoring or clamping.
+      g.w = Math.min(23, Math.max(9, g.label.length * CHIP_W_PER_CHAR)) + (g.key ? 0.6 : 0);
+      g.L = g.x - g.w / 2;
+      g.R = g.x + g.w / 2;
+    });
+    groups.sort((p, q) => p.x - q.x);
+
+    // ---- side + lane assignment -------------------------------------------
+    // Chronological sweep; each chip takes whichever side lets it sit in the
+    // shallowest lane, ties alternating. The September cluster therefore splits
+    // across both sides instead of building one six-high tower.
+    const ends = { up: [], down: [] };
+    let flip = 0;
+    const freeLane = (side, L) => { let i = 0; while (i < ends[side].length && ends[side][i] > L - 0.8) i++; return i; };
+    groups.forEach(g => {
+      const u = freeLane('up', g.L), d = freeLane('down', g.L);
+      g.side = u < d ? 'up' : d < u ? 'down' : (flip++ % 2 ? 'down' : 'up');
+      g.lane = g.side === 'up' ? u : d;
+      ends[g.side][g.lane] = g.R;
+    });
+    const upLanes   = Math.max(ends.up.length, 1);
+    const downLanes = Math.max(ends.down.length, 1);
+    const topH    = upLanes * LANE_H;
+    const railTop = topH + GAP;
+    const belowY  = railTop + RAIL_H + MONTH_BAND + GAP;
+    const totalH  = belowY + downLanes * LANE_H + 4;
+
+    // ---- rail contents -----------------------------------------------------
+    const notchHTML = onAxis.filter(m => effTier(m) === 3).map(m => {
+      const c = colourOf(m);
+      return `<div class="tl-notch${m.tlProvisional ? ' provisional' : ''}${m.occurred ? ' past' : ''}" onclick="focusMilestone('${m.mid}')"`
+           + ` title="${esc(m.date)} — ${esc(m.title)}" style="left:${clamp(midPct(m))}%">`
+           + `<i style="background:${c}"></i></div>`;
+    }).join('');
+    const dotAt = {};
+    groups.forEach(g => { const k = g.x.toFixed(2); (dotAt[k] = dotAt[k] || []).push(g); });
+    const dotsHTML = Object.entries(dotAt).map(([k, gs]) => {
+      const g = gs[0];
+      return `<div class="tl-marker ${g.key ? 'key' : 'secondary'}${g.provisional ? ' provisional' : ''}${gs.length > 1 ? ' multi' : ''}${g.occurred ? ' past' : ''}"`
+        + ` onclick="focusMilestone('${g.lead.mid}')" title="${esc(gs.map(x => x.title).join('  |  '))}"`
+        + ` style="left:${k}%;background:${g.colour};color:${g.colour}"></div>`;
+    }).join('');
+
+    // ---- month band (labels only -- no full-height gridlines; they were the
+    // main source of visual noise in the first two passes) -------------------
+    const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let monthHTML = '';
+    let cur = new Date(Date.parse(AXIS_FROM + 'T00:00:00Z'));
+    cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+    while (dayNum(cur.toISOString().slice(0, 10)) < to) {
+      const x = pct(cur.toISOString().slice(0, 10));
+      monthHTML += `<div class="tl-mtick" style="left:${x}%"></div>`
+                 + `<div class="tl-mlabel" style="left:${x}%">${MON[cur.getUTCMonth()]}</div>`;
+      cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+    }
+    const tdn = dayNum(todayISO), tx = clamp(pct(todayISO));
+    const todayHTML = (tdn >= from && tdn <= to)
+      ? `<div class="tl-now" style="left:${tx}%"></div>`
+        + `<div class="tl-now-label" style="left:${tx}%;top:${railTop + RAIL_H + 4}px">TODAY</div>` : '';
+
+    // ---- chips -------------------------------------------------------------
+    const chipsHTML = groups.map(g => {
+      const posCSS = `left:${g.x}%;`;
+      let chipTop, leadTop, leadH;
+      if (g.side === 'up') {
+        chipTop = (upLanes - 1 - g.lane) * LANE_H;
+        leadTop = chipTop + CHIP_H;
+        leadH   = railTop - leadTop;
+      } else {
+        chipTop = belowY + g.lane * LANE_H;
+        leadTop = railTop + RAIL_H;
+        leadH   = chipTop - leadTop;
+      }
+      return `<div class="tl-chip ${g.key ? 'key' : 'secondary'}${g.occurred ? ' occurred' : ''}${g.provisional ? ' provisional' : ''}"`
+        + ` onclick="focusMilestone('${g.lead.mid}')" title="${esc(g.title)}"`
+        + ` style="${posCSS}top:${chipTop}px;--tlc:${g.colour}">`
+        + `<span class="tl-chip-date">${g.occurred ? '<span class="tl-check">✓</span>' : ''}${esc(g.dateText)}</span>`
+        + `<span class="tl-chip-label">${esc(g.label)}</span></div>`
+        + `<div class="tl-leader" style="left:${g.x}%;top:${leadTop}px;height:${Math.max(0, leadH)}px"></div>`;
+    }).join('');
+
+    const capHTML = offAxis.length ? `
+      <div class="tl-endcap" style="height:${totalH}px">
+        <div class="tl-endcap-rail" style="top:${railTop}px;height:${RAIL_H}px"></div>
+        ${offAxis.map(m => `
+          <div class="tl-chip ${effTier(m) === 1 ? 'key' : 'secondary'} provisional tl-endcap-chip" onclick="focusMilestone('${m.mid}')"
+               title="${esc(m.date)} — ${esc(m.title)}"
+               style="top:${railTop - GAP - CHIP_H}px;--tlc:${colourOf(m)}">
+            <span class="tl-chip-date">${esc(m.date)}</span>
+            <span class="tl-chip-label">${esc(m.tlLabel || m.title)}</span>
+          </div>`).join('')}
+        <div class="tl-endcap-note" style="top:${railTop + RAIL_H + 6}px">not to scale</div>
+      </div>` : '';
+
+    const legendHTML = `
+      <div class="tl-legend">
+        <span class="tl-legend-item"><span class="tl-legend-dot key"></span>Key milestone — formal step in the legislative procedure</span>
+        <span class="tl-legend-item"><span class="tl-legend-dot"></span>Other tracked event</span>
+        <span class="tl-legend-item"><span class="tl-legend-notch"></span>Working level — hover for detail</span>
+        <span class="tl-legend-item"><span class="tl-legend-swatch"></span>Expected — not a confirmed date</span>
+        <span class="tl-legend-item"><span class="tl-check">✓</span>Completed</span>
+        <span class="tl-legend-item">Date ranges shown at their mid-point</span>
+        <span class="tl-legend-item tl-legend-hint">Click any marker to jump to its entry below</span>
+      </div>`;
+
+    return `
+      <div class="tl-wrap">
+        <div class="tl-body">
+          <div class="tl-linear" style="height:${totalH}px">
+            <div class="tl-rail" style="top:${railTop}px;height:${RAIL_H}px">${notchHTML}${dotsHTML}</div>
+            <div class="tl-months" style="top:${railTop + RAIL_H}px;height:${MONTH_BAND}px">${monthHTML}</div>
+            ${todayHTML}
+            ${chipsHTML}
+          </div>
+          ${capHTML}
+        </div>
+        ${legendHTML}
+      </div>`;
+  }
+
 
   // Past events clutter the column fast once a dossier has been running for months.
   // Only genuinely major past milestones (Commission proposal tabled, ENVI Committee Report
@@ -2180,6 +2565,7 @@ function renderOverviewView() {
     ${renderExecHeatmap(dossier)}
     <div class="overview-section">
       <div class="overview-section-title">Next Steps</div>
+      ${renderNextStepsTimeline(ov)}
       <div class="milestone-cols">${colsHTML}${eventsColHTML}${jointHTML}</div>
       ${ov.milestonesLastChecked ? `<div class="milestones-checked">MILESTONES LAST CHECKED: ${ov.milestonesLastChecked}</div>` : ''}
     </div>
@@ -2188,6 +2574,30 @@ function renderOverviewView() {
       <div class="overview-background">${ov.background || ''}</div>
     </div>
   `;
+}
+
+// Timeline -> card bridge (§130 staged expansion: the strip is the index, the
+// columns stay the detail). If the target row is hidden behind a column's
+// "Show N past events" toggle, open that column first, re-render, then scroll.
+function focusMilestone(mid) {
+  const tryScroll = () => {
+    const el = document.getElementById('mrow-' + mid);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('tl-flash');
+    void el.offsetWidth;
+    el.classList.add('tl-flash');
+    setTimeout(() => el.classList.remove('tl-flash'), 2400);
+    return true;
+  };
+  if (tryScroll()) return;
+  const d = getDossier && getDossier();
+  const m = d && d.overview && (d.overview.milestones || []).find(x => x.mid === mid);
+  if (!m) return;
+  const key = m.institution === 'joint' ? 'milestones-joint' : 'milestones-' + m.institution;
+  expandState[key] = true;
+  renderOverviewView();
+  setTimeout(tryScroll, 60);
 }
 
 // ---------------------------------------------------------------
@@ -5074,7 +5484,7 @@ DOSSIERS = {
     "id": "art29a",
     "code": "ART29A",
     "label": "Strengthen Art. 29a price containment",
-    "eonPosition": "Strengthen Article 29a's price-containment mechanism to dampen excessive volatility.",
+    "eonPosition": "Lower the Article 29a trigger so the mechanism can actually fire: reduce the multiple in the first subparagraph of Art. 29a(1) from 2.4 to around 1.5 (E.ON working figure, preliminary as at 12 Aug 2026). Explicitly NOT a price corridor, cap or floor — the ask is to keep the ETS market-based rather than price-based, while making price containment effective in practice rather than only on paper.",
     "eonGrade": "--",
     "pillar": "Price & Market Stability",
     "tier": 1,
@@ -5087,7 +5497,7 @@ DOSSIERS = {
         "legalText": {
           "articleRef": null,
           "text": null,
-          "note": "No amendment to Article 29a (price containment mechanism) anywhere in COM(2026) 616 final — confirmed by direct text search of the full proposal. The existing Art. 29a mechanism is left untouched."
+          "note": "No amendment to Article 29a anywhere in COM(2026) 616 final — confirmed by direct text search of the full proposal. The existing mechanism is left untouched, so it can only be reopened by an amendment somebody tables. Current law, read on the operative verbs (Directive 2003/87/EC consolidated, 02003L0087 — 01.03.2024, Art. 29a): (1) if the average allowance price for the six preceding calendar months is more than 2,4 times the average for the preceding two-year reference period, 75 million allowances SHALL be released from the market stability reserve under Article 1(7) of Decision (EU) 2015/1814. The release is therefore already automatic — the live parameters are the TRIGGER, the fixed QUANTUM and the COOLDOWN, not any decision to act. (2) once the condition has been met it SHALL NOT be considered met again until at least twelve months after the end of the previous release. (1), final subparagraphs: the Commission SHALL publish monthly, within the first three working days, both averages and — where the condition is not met — the level the price would have to reach next month to meet it. That monthly publication is a citable, official measure of how far the mechanism sits from firing."
         }
       },
       "parliament": {
@@ -5114,7 +5524,8 @@ DOSSIERS = {
         "tabledBy": null,
         "legalText": null
       }
-    }
+    },
+    "eonRationale": "E.ON's concern is ETS1 price spikes feeding through to wholesale power, because gas will continue to set the wholesale electricity price for a significant share of hours in many Member States well into the 2030s. Excessive carbon-price increases would therefore slow electrification in E.ON's core sectors — buildings and road transport — which is why an ETS1 parameter is an ETS2-sector concern. The objection to the current formula is that at 2.4x it is unlikely ever to be triggered. Source: Jonas Wilden, 12 Aug 2026 (E.ON anchor, recorded directly).  CROSS-FILE — DO NOT READ ACROSS. E.ON eventually accepted and supported the €45 release threshold for ETS2 under Article 30h, because that file is politically far more sensitive: it reaches households and therefore voters. That does NOT extend to ETS1, and it is not an inconsistency — the two systems hit different constituencies and the reasoning differs by design. Equally, E.ON's ETS1 ask for a market-based trigger does not by itself establish that E.ON would oppose a hard €45 ETS1 ceiling if one became politically live: that is a separate decision and is not on the record. Source: Jonas Wilden, 12 Aug 2026."
   },
   {
     "id": "speculation",
@@ -5495,13 +5906,13 @@ DOSSIERS = {
     "legislative": {
       "commission": {
         "status": "confirmed",
-        "text": "Replaces Art. 10(3) entirely (Art. 1(14)(c)), applicable 1 Jan 2029. Read on the operative verbs, the BINDING earmark HALVES. Today: \"Member States SHALL use those revenues\" \u2014 i.e. all of them, net of own resources and Art. 10a(6) \u2014 on a broad climate/energy list (a)-(l) including buildings and household support. Proposed: \"Member States SHALL use at least 50%\u2026 to support the decarbonisation of ETS sectors\" on a narrow ten-point list, while the remainder is governed only by \"Member States MAY use the remainder\" \u2014 permissive, therefore no binding purpose obligation on the other half. Three binding tightenings on the bound half: the \"shall be deemed to have fulfilled\" equivalence clause is DELETED; revenues SHALL be disbursed by the third year after generation; and use SHALL NOT prolong reliance on fossil fuels in power generation (this one binds both subparagraphs).",
+        "text": "Replaces Art. 10(3) entirely (Art. 1(14)(c)), applicable 1 Jan 2029. Read on the operative verbs, the BINDING earmark HALVES. Today: \"Member States SHALL use those revenues\" — i.e. all of them, net of own resources and Art. 10a(6) — on a broad climate/energy list (a)-(l) including buildings and household support. Proposed: \"Member States SHALL use at least 50%… to support the decarbonisation of ETS sectors\" on a narrow ten-point list, while the remainder is governed only by \"Member States MAY use the remainder\" — permissive, therefore no binding purpose obligation on the other half. Three binding tightenings on the bound half: the \"shall be deemed to have fulfilled\" equivalence clause is DELETED; revenues SHALL be disbursed by the third year after generation; and use SHALL NOT prolong reliance on fossil fuels in power generation (this one binds both subparagraphs).",
         "source": "COM(2026) 616 final, Art. 10/10a",
         "date": "2026-07-17",
         "legalText": {
-                  "articleRef": "Art. 10(3) as replaced by Art. 1(14)(c) — applies from 1 Jan 2029",
-                  "text": "“Member States shall use at least 50% of those revenues, with the exception of the revenues used for the compensation of indirect carbon costs referred to in Article 10a(6) of this Directive, or the equivalent in financial value of those revenues, to support the decarbonisation of ETS sectors, for one or more of the following priority purposes: (a) to top-up the support mechanisms in this Directive…; (b) to develop clean energies, electricity storage and grids… particularly around industrial clusters…; (c) to finance investments in industrial decarbonisation… including industrial electrification, clean industrial production technologies, the capture, use and storage of CO2 and the development of the CO2 transport network; (d) maritime…; (e) aviation…; (f) modal shift…; (g) municipal waste… higher steps of the waste hierarchy; (h) circularity measures to reduce emissions from ETS sectors; (i) lead markets for low-carbon and circular products…; (j) research and development necessary for any of the purposes in points (a) to (h).” — “Notwithstanding the first subparagraph, Member States MAY use the remainder of those revenues… for the following purposes: (a) permanent carbon removal…; (e) measures intended to reduce emissions in buildings…; (f) financial support to address social aspects… in lower- and middle-income households; … (k) residual risk of carbon leakage in CBAM sectors.” — “The use of revenues under the first and second subparagraph shall not prolong reliance on fossil fuels in power generation…” — “Member States shall disburse their revenues by the third year after the year of generation.”",
-                  "note": "READ ON THE OPERATIVE VERBS FIRST \u2014 shall binds, may does not, should does not. CURRENT: \"Member States shall use those revenues\u2026 for one or more of the following\" (a)-(l). Binding on the whole of the net revenue, broad purposes. PROPOSED, first subparagraph: \"Member States shall use at least 50% of those revenues\u2026 to support the decarbonisation of ETS sectors, for one or more of the following priority purposes\" \u2014 binding on half, narrow purposes. PROPOSED, second subparagraph: \"Notwithstanding the first subparagraph, Member States MAY use the remainder of those revenues for which they determine the use for the following purposes\" \u2014 permissive. A \"may\" confers a power, not a duty; had the drafter meant to restrict the remainder it would read \"shall use the remainder only for\". SO THE HEADLINE CONCLUSION IS: the share of ETS1 auction revenue subject to ANY binding positive allocation obligation falls from 100% to 50%. That is adverse to E.ON's REVENUE ask and is the opposite of the impression the explanatory memorandum leaves. The only constraints that reach the unbound half are negative or procedural: \"the use of revenues under the first and second subparagraph shall not prolong reliance on fossil fuels in power generation\", the disbursement deadline, and Art. 30m visibility. SECOND FINDING \u2014 a deletion, invisible to a read-forward-only method: \"Member States shall be deemed to have fulfilled the provisions of this paragraph if they have in place and implement fiscal or financial support policies\u2026 which have a value equivalent to the revenues\" occurs twice in the consolidated Directive and ZERO times in the proposal. That clause is what lets a general fund such as the KTF discharge the obligation by aggregate volume. On the bound half, its removal is a real tightening. THIRD \u2014 scope on the bound half narrows sharply: buildings energy efficiency and deep renovation (current point (h)) and household social support (current (ha)) move to the permissive remainder list, so Germany's largest KTF programme (Bundesf\u00f6rderung effiziente Geb\u00e4ude, \u20ac12.0bn in 2026) stops counting toward the earmark. FOURTH \u2014 the base. The 50% is net of own resources AND net of revenues used for Art. 10a(6) indirect-cost compensation. Germany's EU ETS1 auction revenue was ~\u20ac5.4bn in 2025 (DEHSt) against a \u20ac4.0bn Strompreiskompensation line in the 2026 KTF plan; after a ~30% own-resources carve-out the residual base approaches zero. As drafted, the more a Member State compensates indirect carbon costs, the smaller its binding decarbonisation obligation \u2014 relief scaling with electro-intensity. Sharpest amendment target on this topic. CAVEAT ON SOURCES: the explanatory memorandum's framing \u2014 \"100% since June 2023\", \"only a small fraction of revenues around 5%\" to industrial decarbonisation, industry \"about 47%\" of ETS emissions, \u20ac270bn raised since 2013 \u2014 is Commission argumentation, not law, and is recorded here as such. The \"100%\" figure is itself a gloss: the Article says \"those revenues\", already net of own resources and indirect-cost compensation. Recitals and memoranda are used in this tool for context and never as the basis of a legal conclusion."
+          "articleRef": "Art. 10(3) as replaced by Art. 1(14)(c) — applies from 1 Jan 2029",
+          "text": "“Member States shall use at least 50% of those revenues, with the exception of the revenues used for the compensation of indirect carbon costs referred to in Article 10a(6) of this Directive, or the equivalent in financial value of those revenues, to support the decarbonisation of ETS sectors, for one or more of the following priority purposes: (a) to top-up the support mechanisms in this Directive…; (b) to develop clean energies, electricity storage and grids… particularly around industrial clusters…; (c) to finance investments in industrial decarbonisation… including industrial electrification, clean industrial production technologies, the capture, use and storage of CO2 and the development of the CO2 transport network; (d) maritime…; (e) aviation…; (f) modal shift…; (g) municipal waste… higher steps of the waste hierarchy; (h) circularity measures to reduce emissions from ETS sectors; (i) lead markets for low-carbon and circular products…; (j) research and development necessary for any of the purposes in points (a) to (h).” — “Notwithstanding the first subparagraph, Member States MAY use the remainder of those revenues… for the following purposes: (a) permanent carbon removal…; (e) measures intended to reduce emissions in buildings…; (f) financial support to address social aspects… in lower- and middle-income households; … (k) residual risk of carbon leakage in CBAM sectors.” — “The use of revenues under the first and second subparagraph shall not prolong reliance on fossil fuels in power generation…” — “Member States shall disburse their revenues by the third year after the year of generation.”",
+          "note": "READ ON THE OPERATIVE VERBS FIRST — shall binds, may does not, should does not. CURRENT: \"Member States shall use those revenues… for one or more of the following\" (a)-(l). Binding on the whole of the net revenue, broad purposes. PROPOSED, first subparagraph: \"Member States shall use at least 50% of those revenues… to support the decarbonisation of ETS sectors, for one or more of the following priority purposes\" — binding on half, narrow purposes. PROPOSED, second subparagraph: \"Notwithstanding the first subparagraph, Member States MAY use the remainder of those revenues for which they determine the use for the following purposes\" — permissive. A \"may\" confers a power, not a duty; had the drafter meant to restrict the remainder it would read \"shall use the remainder only for\". SO THE HEADLINE CONCLUSION IS: the share of ETS1 auction revenue subject to ANY binding positive allocation obligation falls from 100% to 50%. That is adverse to E.ON's REVENUE ask and is the opposite of the impression the explanatory memorandum leaves. The only constraints that reach the unbound half are negative or procedural: \"the use of revenues under the first and second subparagraph shall not prolong reliance on fossil fuels in power generation\", the disbursement deadline, and Art. 30m visibility. SECOND FINDING — a deletion, invisible to a read-forward-only method: \"Member States shall be deemed to have fulfilled the provisions of this paragraph if they have in place and implement fiscal or financial support policies… which have a value equivalent to the revenues\" occurs twice in the consolidated Directive and ZERO times in the proposal. That clause is what lets a general fund such as the KTF discharge the obligation by aggregate volume. On the bound half, its removal is a real tightening. THIRD — scope on the bound half narrows sharply: buildings energy efficiency and deep renovation (current point (h)) and household social support (current (ha)) move to the permissive remainder list, so Germany's largest KTF programme (Bundesförderung effiziente Gebäude, €12.0bn in 2026) stops counting toward the earmark. FOURTH — the base. The 50% is net of own resources AND net of revenues used for Art. 10a(6) indirect-cost compensation. Germany's EU ETS1 auction revenue was ~€5.4bn in 2025 (DEHSt) against a €4.0bn Strompreiskompensation line in the 2026 KTF plan; after a ~30% own-resources carve-out the residual base approaches zero. As drafted, the more a Member State compensates indirect carbon costs, the smaller its binding decarbonisation obligation — relief scaling with electro-intensity. Sharpest amendment target on this topic. CAVEAT ON SOURCES: the explanatory memorandum's framing — \"100% since June 2023\", \"only a small fraction of revenues around 5%\" to industrial decarbonisation, industry \"about 47%\" of ETS emissions, €270bn raised since 2013 — is Commission argumentation, not law, and is recorded here as such. The \"100%\" figure is itself a gloss: the Article says \"those revenues\", already net of own resources and indirect-cost compensation. Recitals and memoranda are used in this tool for context and never as the basis of a legal conclusion."
         }
       },
       "parliament": {
@@ -5521,7 +5932,7 @@ DOSSIERS = {
         "text": null,
         "source": null,
         "date": null,
-        "procedural": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026. GERMANY, QUANTIFIED AGAINST THE TWO LEGAL TESTS RATHER THAN ASSERTED. Berlin told the Bundestag on 23 Jul 2026 that it had not yet formed a position on the future use of ETS revenues (Antwort der Bundesregierung, Drucksache 21/7331, transmitted by BMWE; answer to Kleine Anfrage 21/7030 of B\u00fcndnis 90/Die Gr\u00fcnen), and stated that all ETS revenue enters the Klima- und Transformationsfonds with no revenue line assigned to any measure. Against the CURRENT test that is comfortable over-compliance, not a gap: Art. 10(3) applies to EU ETS1 auction revenue only \u2014 ~\u20ac5.4bn for Germany in 2025 (DEHSt; the ~\u20ac16bn nEHS/BEHG take is national law, outside the ETS Directive) \u2014 while the KTF's 2026 Wirtschaftsplan carries \u20ac37.4bn of programme spending, roughly seven times the ETS1 revenue, on a purpose list that expressly covers buildings and household support. The current 'deemed to have fulfilled' clause makes that aggregate sufficient. Against the PROPOSED test the position is materially different, and this is the part worth working: buildings and social support move to the permissive remainder list, so Germany's largest programme (BEG, \u20ac12.0bn) stops counting; the deemed-compliance clause is deleted; and the 50% is computed net of Art. 10a(6) indirect-cost compensation, which for Germany is a \u20ac4.0bn Strompreiskompensation line against ~\u20ac5.4bn of gross ETS1 revenue. Of the KTF's large items, hydrogen (\u20ac3.0bn) and industrial transformation plausibly qualify under the new points (b)/(c); the \u20ac6.5bn transmission-network-charge subsidy is arguable at best as grid development; \u20ac1.7bn of EV charging infrastructure serves an ETS2 sector, not an ETS1 one. Applies from 1 January 2029. No stance was scored on the German document: an actor stating it has no position is not a position (\u00a7166/\u00a7177).",
+        "procedural": "First ministerial exchange of views: Informal Environment Council, Dublin, 23-24 Jul 2026. GERMANY, QUANTIFIED AGAINST THE TWO LEGAL TESTS RATHER THAN ASSERTED. Berlin told the Bundestag on 23 Jul 2026 that it had not yet formed a position on the future use of ETS revenues (Antwort der Bundesregierung, Drucksache 21/7331, transmitted by BMWE; answer to Kleine Anfrage 21/7030 of Bündnis 90/Die Grünen), and stated that all ETS revenue enters the Klima- und Transformationsfonds with no revenue line assigned to any measure. Against the CURRENT test that is comfortable over-compliance, not a gap: Art. 10(3) applies to EU ETS1 auction revenue only — ~€5.4bn for Germany in 2025 (DEHSt; the ~€16bn nEHS/BEHG take is national law, outside the ETS Directive) — while the KTF's 2026 Wirtschaftsplan carries €37.4bn of programme spending, roughly seven times the ETS1 revenue, on a purpose list that expressly covers buildings and household support. The current 'deemed to have fulfilled' clause makes that aggregate sufficient. Against the PROPOSED test the position is materially different, and this is the part worth working: buildings and social support move to the permissive remainder list, so Germany's largest programme (BEG, €12.0bn) stops counting; the deemed-compliance clause is deleted; and the 50% is computed net of Art. 10a(6) indirect-cost compensation, which for Germany is a €4.0bn Strompreiskompensation line against ~€5.4bn of gross ETS1 revenue. Of the KTF's large items, hydrogen (€3.0bn) and industrial transformation plausibly qualify under the new points (b)/(c); the €6.5bn transmission-network-charge subsidy is arguable at best as grid development; €1.7bn of EV charging infrastructure serves an ETS2 sector, not an ETS1 one. Applies from 1 January 2029. No stance was scored on the German document: an actor stating it has no position is not a position (§166/§177).",
         "stage": null,
         "articleRef": null,
         "amendmentNumber": null,
@@ -16632,52 +17043,45 @@ DOSSIERS = {
                     "role": "Bundesumweltminister — lead formal responsibility for EU ETS file",
                     "weight": 41.789,
                     "stances": {
-                              "lrf": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — government-wide reading, not ministry-specific."
-                              },
-                              "freealloc": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — government-wide reading, not ministry-specific."
-                              },
-                              "msr": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
-                                        "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
-                              },
-                              "art29a": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "manual",
-                                "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "ets2delay": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "research",
-                                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
-                                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "ets1general": {
-                                        "stance": "support",
-                                        "intensity": 3,
-                                        "confidence": 3,
-                                        "source": "research",
-                                        "url": "https://www.bundesumweltministerium.de/pressemitteilung/eu-kommission-legt-vorschlag-fuer-reform-des-europaeischen-emissionshandels-vor",
-                                        "note": "Upgraded 21 Jul 2026 — BMUKN's own press release (18 Jul, Nr. 095/26) quotes Schneider calling the ETS ‘the heart of European climate policy and the most important market-based driver of investment’, explicitly welcoming the Investment Booster and fallback-benchmark flexibilities and stressing frontrunners must not be penalised. Supersedes the earlier Eurelectric-survey-derived tag (document, conf 2)."
-                              }
-                    },
+  "lrf": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — government-wide reading, not ministry-specific."
+  },
+  "freealloc": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — government-wide reading, not ministry-specific."
+  },
+  "msr": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 2,
+    "source": "research",
+    "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
+    "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
+  },
+  "ets2delay": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 1,
+    "source": "research",
+    "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+    "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
+  },
+  "ets1general": {
+    "stance": "support",
+    "intensity": 3,
+    "confidence": 3,
+    "source": "research",
+    "url": "https://www.bundesumweltministerium.de/pressemitteilung/eu-kommission-legt-vorschlag-fuer-reform-des-europaeischen-emissionshandels-vor",
+    "note": "Upgraded 21 Jul 2026 — BMUKN's own press release (18 Jul, Nr. 095/26) quotes Schneider calling the ETS ‘the heart of European climate policy and the most important market-based driver of investment’, explicitly welcoming the Investment Booster and fallback-benchmark flexibilities and stressing frontrunners must not be penalised. Supersedes the earlier Eurelectric-survey-derived tag (document, conf 2)."
+  }
+},
                     "mandate": {
                               "id": "de-merz-1",
                               "label": "Merz I",
@@ -16699,53 +17103,46 @@ DOSSIERS = {
                     "role": "Bundeswirtschafts- und Energieministerin — industry/energy competitiveness angle",
                     "weight": 41.789,
                     "stances": {
-                              "lrf": {
-                                        "stance": "support",
-                                        "intensity": 3,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://www.nachrichten-heute.net/1687683-reiche-will-co2-emissionshandel-weiter-abschwaechen.html",
-                                        "note": "BMWE response to a Bundestag written question (Greens), reported by Rheinische Post: wants a slower LRF pace than currently planned, a limited allowance quantity retained even after 2039, and the adjustment to the eased EU climate targets pushed back to start only in 2036. Strongly aligned with E.ON's LRF ask; corroborates and sharpens Jonas's own government-wide intel below."
-                              },
-                              "freealloc": {
-                                        "stance": "support",
-                                        "intensity": 3,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://www.nachrichten-heute.net/1687683-reiche-will-co2-emissionshandel-weiter-abschwaechen.html",
-                                        "note": "Same BMWE response confirms support for the Commission's planned free-allocation extensions, plus new supplementary funding/demand-support instruments for early-moving companies to offset the resulting competitive disadvantage. Aligned with E.ON's ask; Greens (Banaszak, Joswig) have publicly criticized this as penalizing first movers — see the Glück-lesson caveat in memory §7.2, though here BMWE explicitly frames it as protecting, not disadvantaging, early investors."
-                              },
-                              "msr": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 2,
-                                        "source": "research",
-                                        "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
-                                        "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
-                              },
-                              "art29a": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "manual",
-                                "note": "E.ON internal intel table (Jonas), Jul 2026. — source table left the E.ON anchor column blank on this row — polarity inferred from E.ON's known position-paper ask, not read directly off the table. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "ets2delay": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "research",
-                                "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
-                                "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "ets1general": {
-                                "stance": "support",
-                                "intensity": 1,
-                                "confidence": 1,
-                                "source": "document",
-                                "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. No confirmed reaction from BMWE/Reiche specifically to the published Commission proposal (COM, 17 Jul 2026) has been found as of 21 Jul 2026 — the lrf/freealloc/msr/art29a stances above still rest on the pre-proposal Rheinische Post report of a Bundestag written-question response (Jun 2026), not a genuine post-proposal statement. Flagged pending a direct BMWE reaction; do not treat as confirmed post-proposal alignment. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              }
-                    },
+  "lrf": {
+    "stance": "support",
+    "intensity": 3,
+    "confidence": 2,
+    "source": "research",
+    "url": "https://www.nachrichten-heute.net/1687683-reiche-will-co2-emissionshandel-weiter-abschwaechen.html",
+    "note": "BMWE response to a Bundestag written question (Greens), reported by Rheinische Post: wants a slower LRF pace than currently planned, a limited allowance quantity retained even after 2039, and the adjustment to the eased EU climate targets pushed back to start only in 2036. Strongly aligned with E.ON's LRF ask; corroborates and sharpens Jonas's own government-wide intel below."
+  },
+  "freealloc": {
+    "stance": "support",
+    "intensity": 3,
+    "confidence": 2,
+    "source": "research",
+    "url": "https://www.nachrichten-heute.net/1687683-reiche-will-co2-emissionshandel-weiter-abschwaechen.html",
+    "note": "Same BMWE response confirms support for the Commission's planned free-allocation extensions, plus new supplementary funding/demand-support instruments for early-moving companies to offset the resulting competitive disadvantage. Aligned with E.ON's ask; Greens (Banaszak, Joswig) have publicly criticized this as penalizing first movers — see the Glück-lesson caveat in memory §7.2, though here BMWE explicitly frames it as protecting, not disadvantaging, early investors."
+  },
+  "msr": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 2,
+    "source": "research",
+    "url": "https://agenceurope.eu/en/bulletin/article/13908/16/reform-of-ets-divisions-within-council-of-eu-raise-fears-of-weakening-of-climate-ambition-commission-could-put-forward",
+    "note": "Agence Europe (13 Jul 2026) cites a German non-paper opposing any “short-term” intervention on the ETS that would distort price signals, including on the MSR, while supporting several targeted adjustments — aligned with E.ON's no-discretionary-intervention ask. Government-wide non-paper, not ministry-specific."
+  },
+  "ets2delay": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 1,
+    "source": "research",
+    "url": "https://www.aol.com/articles/ten-countries-urge-eu-rethink-085053000.html",
+    "note": "Added 25 Jul 2026. Not a direct on-the-record 2026 Berlin statement — inferred from Reuters' framing (Kate Abnett, 15 Jul 2026) of the 10-country ETS2-reconsideration bloc risking a clash “against proponents of the new charge like Germany and Sweden”, read alongside Germany's well-established historical role as ETS2's principal architect within the 2023 Directive. Government-wide reading, not ministry-specific. Upgrade to confidence 3 if a direct BMWK/BMUKN statement on non-reopening of ETS2 specifically is found. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
+  },
+  "ets1general": {
+    "stance": "support",
+    "intensity": 1,
+    "confidence": 1,
+    "source": "document",
+    "note": "Eurelectric member survey: Constructive criticism (yellow). Mapped per Jonas's instruction: green/yellow=support, red=neutral, dark red=oppose. No confirmed reaction from BMWE/Reiche specifically to the published Commission proposal (COM, 17 Jul 2026) has been found as of 21 Jul 2026 — the lrf/freealloc/msr/art29a stances above still rest on the pre-proposal Rheinische Post report of a Bundestag written-question response (Jun 2026), not a genuine post-proposal statement. Flagged pending a direct BMWE reaction; do not treat as confirmed post-proposal alignment. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
+  }
+},
                     "mandate": {
                               "id": "de-merz-1",
                               "label": "Merz I",
@@ -17062,77 +17459,78 @@ DOSSIERS = {
                     "role": "Lead signatory, 15 Jul 2026 10-country joint statement (with IT, BG, CY, CZ, EE, EL, HU, RO, SK) urging ETS2 be “carefully reconsidered” in the ETS1 revision; also signatory, Jul 2025 joint non-paper on ETS2 price volatility. Post-proposal, climate minister Paulina Hennig-Kloska welcomed the Commission’s 17 Jul package itself as “a success of Polish diplomacy” — the first EU climate-policy easing rather than tightening — while confirming Poland will keep pushing for further concessions (PAP, via energetyka24.com, 20 Jul 2026; also reported by Clean Energy Wire, 24 Jul 2026, which additionally cites deputy minister Bolesta on a goal of making ETS2 voluntary — that specific claim is secondary-sourced only, not independently corroborated in the Polish-language primary coverage checked this session).",
                     "weight": 36.498,
                     "stances": {
-                              "mwi": {
-                                        "stance": "oppose",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026."
-                              },
-                              "lrf": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 (original manual read). Joint statement on the EU ETS revision (Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Italy, Poland, Romania, Slovakia; primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): the current near-zero-by-2039 target “will push industries out of Europe. Extending the ETS cap closer to 2050 is therefore necessary.” Aligned with E.ON's ask to lower the LRF pace toward a 2050-aligned trajectory rather than a faster near-term target."
-                              },
-                              "freealloc": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/eunews.it, 15 Jul 2026): explicitly accepts “incentive-based conditionality linked to investments... for additional, much-needed allocations for sectors in a position to undertake extra efforts,” but opposes “a general conditionality applied to all free allocation” as imposing “heavy strain on already struggling industrial sectors” — “free allocation is not a reward but a necessity providing protection against carbon leakage.” Also calls to pause the CBAM-sector free-allocation phase-out “until this new tool proves its effectiveness.” Directionally aligned with E.ON's tiered/conditional-only-for-additional-allocations approach, though the blanket-necessity framing is broader than E.ON's own ask."
-                              },
-                              "art29a": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "manual",
-                                "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "speculation": {
-                                        "stance": "oppose",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — favours anti-speculation measures, opposes E.ON. Corroborated by the 10-country joint declaration (primary text supplied by Jonas, 15 Jul 2026): “CO2 price must be predictable and immune to speculation.”"
-                              },
-                              "indirect": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026."
-                              },
-                              "ets2delay": {
-                                        "stance": "oppose",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
-                              },
-                              "ets1general": {
-                                "stance": "neutral",
-                                "confidence": 3,
-                                "source": "document",
-                                "note": "Upgraded to confidence 3 on 4 Aug 2026, superseding the Eurelectric member-survey reading (“Major changes requested”, red) that had carried this row at confidence 1. The Ministry of Climate and Environment's own release of 17 Jul 2026 (gov.pl/web/klimat, “Zmiany ETS — Komisja Europejska uwzględniła polski głos”) is a primary, dated statement on this ask: Minister Paulina Hennig-Kloska calls the proposal “milowy krok” and “ogromny sukces polskiej dyplomacji” because “po raz pierwszy Komisja Europejska proponuje rozwiązania, które łagodzą, a nie zaostrzają wpływ systemu na gospodarkę i obywateli”, and closes “to dobry kierunek i ważny etap dalszych negocjacji”; Deputy Minister Krzysztof Bolesta adds “nie ograniczamy się do sprzeciwu”. Direction unchanged and still MIXED per §120 and §166 route (a): the same release welcomes preserving and easing ETS1 while Warsaw keeps pressing to slow the reduction pace further and to enlarge the Modernisation Fund — offsetting elements within one settled position. Mixed carries no intensity."
-                              },
-                              "modfund": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Deputy climate minister Krzysztof Bolesta said Poland will push for an increased scale of Modernisation Fund support after the Commission's 17 Jul proposal, alongside the best possible operating conditions for industry (PAP, via energetyka24.com, 20 Jul 2026; also reported by Clean Energy Wire, 24 Jul 2026, linking to the government's own gov.pl statement). Directly aligned with E.ON's own Modernisation Fund interest across its CEE footprint (§92)."
-                              },
-                              "frontload": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Ministry of Climate and Environment release, 17 Jul 2026 (gov.pl/web/klimat): Warsaw lists the “Nowy instrument – ETS Investment Booster” among the proposal's wins for Poland, describing it as “specjalny fundusz wspierający inwestycje w przemyśle” aimed at the sectors facing the largest transition challenge, and notes that “zgodnie z postulatem Polski” the Commission proposed a separate pool for Member States with weaker investment capacity, given preferential access to financing — the 100m allowances ringfenced 18 months for the 12 lower-income Member States (WK 10833/2026 INIT). Directionally congruent with E.ON's interest in the Booster's phase-1 design, though Poland's emphasis is on the CEE ringfence rather than on the instrument's overall size. Added 4 Aug 2026."
-                              }
-                    },
+  "mwi": {
+    "stance": "oppose",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026."
+  },
+  "lrf": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 (original manual read). Joint statement on the EU ETS revision (Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Italy, Poland, Romania, Slovakia; primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): the current near-zero-by-2039 target “will push industries out of Europe. Extending the ETS cap closer to 2050 is therefore necessary.” Aligned with E.ON's ask to lower the LRF pace toward a 2050-aligned trajectory rather than a faster near-term target."
+  },
+  "freealloc": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/eunews.it, 15 Jul 2026): explicitly accepts “incentive-based conditionality linked to investments... for additional, much-needed allocations for sectors in a position to undertake extra efforts,” but opposes “a general conditionality applied to all free allocation” as imposing “heavy strain on already struggling industrial sectors” — “free allocation is not a reward but a necessity providing protection against carbon leakage.” Also calls to pause the CBAM-sector free-allocation phase-out “until this new tool proves its effectiveness.” Directionally aligned with E.ON's tiered/conditional-only-for-additional-allocations approach, though the blanket-necessity framing is broader than E.ON's own ask."
+  },
+  "art29a": {
+    "stance": "support",
+    "intensity": 1,
+    "confidence": 2,
+    "source": "KOBiZE / IOŚ-PIB, European Central Carbon Bank policy brief (Warsaw, June 2025)",
+    "note": "Re-scored 12 Aug 2026 against the E.ON anchor recorded that day (lower the Art. 29a(1) multiple from 2.4 to ~1.5, keeping the ETS market-based — explicitly NOT a price corridor or cap). WRONG INSTRUMENT, not a weaker version of the ask: the Polish carbon-policy establishment's flagship proposal is the European Central Carbon Bank, which the KOBiZE/IOŚ-PIB policy brief of June 2025 recommends including in the 2026 review 'recognising its potential to REPLACE and enhance existing market intervention mechanisms such as the MSR and Article 29a', with both price-based and volume-based intervention powers vested in a discretionary institution. Under §166 that scores intensity 1 (wrong instrument) however forcefully advocated. CONFIDENCE 2, not 3: the brief carries an explicit disclaimer that its views 'do not necessarily represent the official position of the Government of the Republic of Poland' — KOBiZE is a state research institute, not the government on the record. Jonas's own testimony (12 Aug 2026) that Poland has long argued for a Carbon Central Bank or a fixed price corridor corroborates the direction. Supersedes the previous placeholder (support/2/confidence 1), which existed only because the intel table's E.ON-anchor column was blank. The old record was not WRONG so much as unevidenced — §177 confidence 1 is a placeholder, and any direct evidence overturns it.",
+    "url": "https://climatecake.ios.edu.pl/wp-content/uploads/2025/06/KOBiZE_ECCB_Policy-Brief_final_26062025.pdf"
+  },
+  "speculation": {
+    "stance": "oppose",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — favours anti-speculation measures, opposes E.ON. Corroborated by the 10-country joint declaration (primary text supplied by Jonas, 15 Jul 2026): “CO2 price must be predictable and immune to speculation.”"
+  },
+  "indirect": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026."
+  },
+  "ets2delay": {
+    "stance": "oppose",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
+  },
+  "ets1general": {
+    "stance": "neutral",
+    "confidence": 3,
+    "source": "document",
+    "note": "Upgraded to confidence 3 on 4 Aug 2026, superseding the Eurelectric member-survey reading (“Major changes requested”, red) that had carried this row at confidence 1. The Ministry of Climate and Environment's own release of 17 Jul 2026 (gov.pl/web/klimat, “Zmiany ETS — Komisja Europejska uwzględniła polski głos”) is a primary, dated statement on this ask: Minister Paulina Hennig-Kloska calls the proposal “milowy krok” and “ogromny sukces polskiej dyplomacji” because “po raz pierwszy Komisja Europejska proponuje rozwiązania, które łagodzą, a nie zaostrzają wpływ systemu na gospodarkę i obywateli”, and closes “to dobry kierunek i ważny etap dalszych negocjacji”; Deputy Minister Krzysztof Bolesta adds “nie ograniczamy się do sprzeciwu”. Direction unchanged and still MIXED per §120 and §166 route (a): the same release welcomes preserving and easing ETS1 while Warsaw keeps pressing to slow the reduction pace further and to enlarge the Modernisation Fund — offsetting elements within one settled position. Mixed carries no intensity."
+  },
+  "modfund": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "Deputy climate minister Krzysztof Bolesta said Poland will push for an increased scale of Modernisation Fund support after the Commission's 17 Jul proposal, alongside the best possible operating conditions for industry (PAP, via energetyka24.com, 20 Jul 2026; also reported by Clean Energy Wire, 24 Jul 2026, linking to the government's own gov.pl statement). Directly aligned with E.ON's own Modernisation Fund interest across its CEE footprint (§92)."
+  },
+  "frontload": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "Ministry of Climate and Environment release, 17 Jul 2026 (gov.pl/web/klimat): Warsaw lists the “Nowy instrument – ETS Investment Booster” among the proposal's wins for Poland, describing it as “specjalny fundusz wspierający inwestycje w przemyśle” aimed at the sectors facing the largest transition challenge, and notes that “zgodnie z postulatem Polski” the Commission proposed a separate pool for Member States with weaker investment capacity, given preferential access to financing — the 100m allowances ringfenced 18 months for the 12 lower-income Member States (WK 10833/2026 INIT). Directionally congruent with E.ON's interest in the Booster's phase-1 design, though Poland's emphasis is on the CEE ringfence rather than on the instrument's overall size. Added 4 Aug 2026."
+  }
+},
                     "mandate": {
                               "id": "pl-tusk-3",
                               "label": "Tusk III",
@@ -17153,57 +17551,50 @@ DOSSIERS = {
                     "role": "Originator, Jul 2025 joint non-paper on ETS2 price volatility; also signatory, 10-country ETS-1 joint statement (15 Jul 2026, primary text supplied by Jonas)",
                     "weight": 10.909,
                     "stances": {
-                              "freealloc": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/eunews.it, 15 Jul 2026): explicitly accepts “incentive-based conditionality linked to investments... for additional, much-needed allocations for sectors in a position to undertake extra efforts,” but opposes “a general conditionality applied to all free allocation” as imposing “heavy strain on already struggling industrial sectors” — “free allocation is not a reward but a necessity providing protection against carbon leakage.” Also calls to pause the CBAM-sector free-allocation phase-out “until this new tool proves its effectiveness.” Directionally aligned with E.ON's tiered/conditional-only-for-additional-allocations approach, though the blanket-necessity framing is broader than E.ON's own ask."
-                              },
-                              "lrf": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "note": "Joint statement on the EU ETS revision (Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Italy, Poland, Romania, Slovakia; primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): the current near-zero-by-2039 target “will push industries out of Europe. Extending the ETS cap closer to 2050 is therefore necessary.” Aligned with E.ON's ask to lower the LRF pace toward a 2050-aligned trajectory rather than a faster near-term target."
-                              },
-                              "art29a": {
-                                "stance": "support",
-                                "intensity": 2,
-                                "confidence": 1,
-                                "source": "manual",
-                                "note": "E.ON internal intel table (Jonas), Jul 2026. — E.ON anchor column blank on this row — polarity inferred from E.ON's known ask. [Re-rated 3 Aug 2026 under the agreed confidence rubric: no statement by this actor on this specific ask exists, so the position is inferred — confidence 1.]"
-                              },
-                              "speculation": {
-                                        "stance": "oppose",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — favours anti-speculation measures, opposes E.ON. Corroborated by the 10-country joint declaration (primary text supplied by Jonas, 15 Jul 2026): “CO2 price must be predictable and immune to speculation.”"
-                              },
-                              "indirect": {
-                                        "stance": "support",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "manual",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026."
-                              },
-                              "ets2delay": {
-                                        "stance": "oppose",
-                                        "intensity": 2,
-                                        "confidence": 3,
-                                        "source": "document",
-                                        "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
-                                        "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
-                              },
-                              "ets1general": {
-                                  "stance": "oppose",
-                                  "intensity": 3,
-                                  "confidence": 2,
-                                  "source": "document",
-                                  "note": "Upgraded from confidence 1 to 2 on 4 Aug 2026 after an online re-check of the ORIGINAL record, prompted by the Italy case. The Eurelectric member-survey tag (“Pause / abolition of the system”, dark red) is corroborated rather than contradicted: Czechia and Slovakia are reported to have applied sustained pressure for a suspension of the EU ETS through the first half of 2026, alongside Italy (Carbon Market Watch, 24 Mar 2026; E&E News/POLITICO Pro, 19 Mar 2026). Signatory of the leaders' letter of March 2026 (Austria, Croatia, Czechia, Greece, Hungary, Italy, Poland, Romania, Slovakia) calling the current ETS framework “an existential risk for many European strategic industrial sectors” and asking the Commission to extend free allocation beyond 2034 (letter seen by Euronews, 18 Mar 2026). Note this is a DIFFERENT grouping from the 15 Jul ten-country statement (PL, BG, CY, CZ, EE, EL, HU, IT, RO, SK) — March adds Austria and Croatia, July adds Bulgaria, Cyprus and Estonia; the two must not be conflated. Confidence 2 rather than 3 because this rests on credible third-party reporting and a co-signed letter, not on a primary government text of this state's own calling for suspension — the route to 3 is a ministry or government statement on the national domain, which has not yet been found. Direction and intensity unchanged: this row was never in doubt, only its evidential basis."
-                                }
-                    },
+  "freealloc": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/eunews.it, 15 Jul 2026): explicitly accepts “incentive-based conditionality linked to investments... for additional, much-needed allocations for sectors in a position to undertake extra efforts,” but opposes “a general conditionality applied to all free allocation” as imposing “heavy strain on already struggling industrial sectors” — “free allocation is not a reward but a necessity providing protection against carbon leakage.” Also calls to pause the CBAM-sector free-allocation phase-out “until this new tool proves its effectiveness.” Directionally aligned with E.ON's tiered/conditional-only-for-additional-allocations approach, though the blanket-necessity framing is broader than E.ON's own ask."
+  },
+  "lrf": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "note": "Joint statement on the EU ETS revision (Bulgaria, Cyprus, Czechia, Estonia, Greece, Hungary, Italy, Poland, Romania, Slovakia; primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): the current near-zero-by-2039 target “will push industries out of Europe. Extending the ETS cap closer to 2050 is therefore necessary.” Aligned with E.ON's ask to lower the LRF pace toward a 2050-aligned trajectory rather than a faster near-term target."
+  },
+  "speculation": {
+    "stance": "oppose",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — favours anti-speculation measures, opposes E.ON. Corroborated by the 10-country joint declaration (primary text supplied by Jonas, 15 Jul 2026): “CO2 price must be predictable and immune to speculation.”"
+  },
+  "indirect": {
+    "stance": "support",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "manual",
+    "note": "E.ON internal intel table (Jonas), Jul 2026."
+  },
+  "ets2delay": {
+    "stance": "oppose",
+    "intensity": 2,
+    "confidence": 3,
+    "source": "document",
+    "url": "https://www.ffe.de/en/publications/eu-ets-ii-what-resistance-and-reform-proposals-are-there/",
+    "note": "E.ON internal intel table (Jonas), Jul 2026 — favours further ETS2 postponement, opposes E.ON. Corroborated by public source: Poland, Czechia, Slovakia & Hungary sent a joint letter to von der Leyen (end Oct 2025) explicitly requesting ETS2 start be postponed to 2030. Joint statement on the EU ETS revision (primary text supplied by Jonas, corroborated by Reuters/Kate Abnett 15 Jul 2026 and eunews.it/ANSA 15 Jul 2026): “ETS2 is a particularly socially sensitive instrument... impacts mainly the most vulnerable households, which are already disproportionately affected by the fuel price crisis... ETS2 should be therefore addressed directly in the revision and carefully reconsidered.” Opposes E.ON's no-further-delay ask."
+  },
+  "ets1general": {
+    "stance": "oppose",
+    "intensity": 3,
+    "confidence": 2,
+    "source": "document",
+    "note": "Upgraded from confidence 1 to 2 on 4 Aug 2026 after an online re-check of the ORIGINAL record, prompted by the Italy case. The Eurelectric member-survey tag (“Pause / abolition of the system”, dark red) is corroborated rather than contradicted: Czechia and Slovakia are reported to have applied sustained pressure for a suspension of the EU ETS through the first half of 2026, alongside Italy (Carbon Market Watch, 24 Mar 2026; E&E News/POLITICO Pro, 19 Mar 2026). Signatory of the leaders' letter of March 2026 (Austria, Croatia, Czechia, Greece, Hungary, Italy, Poland, Romania, Slovakia) calling the current ETS framework “an existential risk for many European strategic industrial sectors” and asking the Commission to extend free allocation beyond 2034 (letter seen by Euronews, 18 Mar 2026). Note this is a DIFFERENT grouping from the 15 Jul ten-country statement (PL, BG, CY, CZ, EE, EL, HU, IT, RO, SK) — March adds Austria and Croatia, July adds Bulgaria, Cyprus and Estonia; the two must not be conflated. Confidence 2 rather than 3 because this rests on credible third-party reporting and a co-signed letter, not on a primary government text of this state's own calling for suspension — the route to 3 is a ministry or government statement on the national domain, which has not yet been found. Direction and intensity unchanged: this row was never in doubt, only its evidential basis."
+  }
+},
                     "mandate": {
                               "id": "cz-babis-3",
                               "label": "Babiš III",
@@ -18263,7 +18654,15 @@ DOSSIERS = {
     "note": "Formally tabled 17 Jul as COM(2026) 616 final, confirming the Reuters preview's profile over Bloomberg's softer leak. Sets the Phase 5 (2031-2040) framework: LRF cut to 3.7%/yr from 2031 (1.7%/yr from 2036), free allocation/CBAM phase-out extended to 2038 and made investment-conditional from 2031, MSR invalidation mechanism ended. Investment Booster confirmed at ~€30bn to 2030 plus ~€70bn more from 2031. Council remains split 10 countries wanting more vs. 7 defending ambition; positions due end-2026 for a Jan 2027 trilogue start.",
     "url": "https://climate.ec.europa.eu/document/download/c0b4ca8e-0e12-4b4e-9976-98c0b4224410_en",
     "institution": "comm",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-com-proposal",
+    "tlTier": 1,
+    "tlStart": "2026-07-17",
+    "tlEnd": null,
+    "tlProvisional": false,
+    "tlLabel": "ETS review tabled",
+    "tlDateText": "17 Jul",
+    "tlTierWhy": "Commission proposal tabled — opens the OLP"
   },
   {
     "date": "2026-07-17",
@@ -18272,7 +18671,12 @@ DOSSIERS = {
     "note": "COM(2026) 619 final (2026/0211(COD)) was tabled the same day as the main review and amends Art. 10a alone. A new Art. 10a(2a) obliges the Commission to cut the maximum annual reduction rate for the heat and fuel ('fallback') benchmarks to a rate that makes full use of the additional amount under Art. 10a(5a) without triggering the cross-sectoral correction factor — around 80 million allowances for 2026-2030 on the Commission's own figure. Benchmark values are adjusted for 2027-2030 only and the 2026 uplift is paid together with the 2027 allocation using 40% of the adjustment, so no additional allowance is allocated during 2026. A new Art. 10a(2b) excludes crude petroleum and natural gas extraction, refined petroleum products and pipeline transport (NACE 0610, 0620, 1920, 4950) from the relief, with sector-specific sub-benchmarks to be established for those activities instead. Directly relevant to E.ON's FREEALLOC ask.",
     "url": "https://climate.ec.europa.eu/document/download/2a0f3e9c-5562-4253-8327-dc7bea886ed8_en",
     "institution": "comm",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-com-619",
+    "tlTier": 3,
+    "tlStart": "2026-07-17",
+    "tlEnd": null,
+    "tlProvisional": false
   },
   {
     "date": "2026-07-17",
@@ -18281,7 +18685,12 @@ DOSSIERS = {
     "note": "COM(2026) 620 final, the maritime MRV and FuelEU alignment Regulation, was tabled on 17 July alongside the ETS Directive review COM(2026) 616 and the fallback-benchmarks proposal COM(2026) 619 and is the third element of the same package. It is a Regulation amending Regulation (EU) 2015/757 (maritime MRV) and Regulation (EU) 2023/1805 (FuelEU Maritime) to align them with the ETS revision, on legal basis TFEU 192(1). The Council handles all three as one interinstitutional bundle — the Council’s package working document, WK 10833/2026 carries files 2026/0210, 2026/0211 and 2026/0212 together. Low direct exposure for E.ON, but it matters for scope-of-package questions: an amendment landing in any of the three travels with the others in Council, and the maritime file is the one where the new allowance reserve for sustainable fuels and zero-emission propulsion sits.",
     "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0210(COD)",
     "institution": "comm",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-com-620",
+    "tlTier": 3,
+    "tlStart": "2026-07-17",
+    "tlEnd": null,
+    "tlProvisional": false
   },
   {
     "date": "2026-07-23",
@@ -18291,7 +18700,12 @@ DOSSIERS = {
     "note": "Runs under the Directive as it stands, separate from the review, but it fixes the actual free-allocation quantum for 2026-2030 and is the base the 2026-2030 heat and fuel ('fallback') benchmarks proposal, COM(2026) 619, adjusts. Article 1 provides that the uniform cross-sectoral correction factor “shall be 100 %” for each year of the period, so no uniform cut is applied to free allocation in any year to 2030. The recitals set out the arithmetic. The maximum amount that may be allocated free of charge is 432,346,850 allowances for 2026 — 43% of an adjusted 2026 cap of 1,180,706,960, itself the Art. 9 Union-wide quantity of 1,185,420,090 less the 3.5% maritime reduction under Art. 3ga(3), less 35,357,143 under Art. 10a(8) and 40,000,000 for the Social Climate Fund under Art. 10a(8b) — then 434,602,358 for 2027, 395,980,088 for 2028, 357,357,817 for 2029 and 318,735,546 for 2030. Member States' preliminary allocations exceeded those ceilings; the shortfall is covered by 125,586,948 allowances left unused from the 2021-2025 maximum and by the Art. 10a(5a) 3% additional amount, of which 289,226,630 of the 368,419,533 available for 2021-2030 is committed — leaving 79,192,903, the order of the roughly 80 million COM(2026) 619 would spend on its 2027-2030 uplift. Legal basis Art. 14(6) of Delegated Regulation (EU) 2019/331. COM(2026) 619 as tabled on 17 July still cited this act as “Commission Decision XXX [CSCF Decision]” with the reference to be inserted; it was adopted six days later.",
     "url": "https://eur-lex.europa.eu/eli/dec_impl/2026/1862/oj",
     "institution": "comm",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-cscf",
+    "tlTier": 3,
+    "tlStart": "2026-07-23",
+    "tlEnd": null,
+    "tlProvisional": false
   },
   {
     "date": "2026-09 (from)",
@@ -18300,7 +18714,12 @@ DOSSIERS = {
     "note": "The Union-level steps of the 2026-2030 free-allocation cycle are complete: revised benchmark values by Commission Implementing Regulation (EU) 2026/1412 of 26 June (Art. 10a(2)), the national implementation measures decision by Commission Decision (EU) 2026/1312 of 15 June (Art. 11(3)), and the cross-sectoral correction factor by Commission Implementing Decision (EU) 2026/1862 of 23 July (Art. 10a(5), set at 100%). What remains is national. Austria's competent authority BMLUK publishes the operative timetable: national allocation notices after the Commission decisions, and 2026 free allowances booked in the Union Registry from September 2026. DG CLIMA's free-allocation page asserts for the second allocation period of phase 4 that the Commission “has adopted updated benchmark values and national allocation decisions” without citing any act, unlike the 2021-2025 block immediately above it which lists four by number; the three acts are now identified here instead.",
     "url": "https://www.bmluk.gv.at/themen/klima-und-umwelt/klima/eu_emissionshandel/aktuelle_entwicklung.html",
     "institution": "comm",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-natalloc",
+    "tlTier": 3,
+    "tlStart": "2026-09-01",
+    "tlEnd": null,
+    "tlProvisional": true
   },
   {
     "date": "2026-07-20/22",
@@ -18309,7 +18728,12 @@ DOSSIERS = {
     "note": "The Irish Presidency convened the Working Party on the Environment on 20 and 22 Jul for the Commission to present the ETS Directive review, COM(2026) 616/619 and the MRV-alignment regulation, followed by first Member State discussion. First substantive Council-level engagement with the filed texts, ahead of the 23-24 Jul Dublin ministerial meeting. No Presidency compromise text yet — presentation-and-discussion format only.",
     "url": "https://data.consilium.europa.eu/doc/document/CM-3713-2026-INIT/en/pdf",
     "institution": "council",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-wpe-july",
+    "tlTier": 3,
+    "tlStart": "2026-07-20",
+    "tlEnd": "2026-07-22",
+    "tlProvisional": false
   },
   {
     "date": "2026-09-01/02/10",
@@ -18318,7 +18742,30 @@ DOSSIERS = {
     "note": "Three meetings confirmed: Tue 1 Sep, Wed 2 Sep, Thu 10 Sep, all in Brussels. No ENVI draft agenda is published for any of them as at 12 August. The committee vote on Pierfrancesco Maran's report on the MSR-invalidation file, 2026/0085(COD), is expected on 10 September per the Strasbourg draft agenda, which places it at the third meeting rather than the 1-2 September pair — and makes 10 September, not the 14-17 September plenary, the operative deadline for amendments to that file. These remain the first realistic window for substantive ENVI engagement with the ETS Directive review, COM(2026) 616, tabled 17 Jul, on which no committee is yet formally seised.",
     "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html",
     "institution": "ep",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-envi-sept",
+    "tlTier": 3,
+    "tlStart": "2026-09-01",
+    "tlEnd": null,
+    "tlProvisional": false
+  },
+  {
+    "date": "2026-09-10 (expected)",
+    "title": "ENVI vote on the MSR-invalidation report (Maran)",
+    "keyMilestone": false,
+    "status": "Expected — the Strasbourg plenary draft agenda for 14-17 September 2026 (version of 15 July 2026) records “Expected date of adoption: 10/09” against item 46, Pierfrancesco Maran's report on the MSR-invalidation file, 2026/0085(COD). Checked 12 Aug 2026.",
+    "note": "A committee vote on a REPORT, not a procedural step: ENVI fixes Parliament's negotiating text on ceasing the invalidation of allowances in the market stability reserve. It is therefore the operative deadline for amendments to that file — four days before the joint plenary debate of 14 September, not the plenary week itself. The amendments already tabled are substantive rather than technical (PE791.122, 22 Jul, 48 amendments): a hard €45/t ETS1 price ceiling (Patriots), outright rejection (The Left) and raising the invalidation threshold from 400m to 600m rather than removing it (Renew, Wiesner). No ENVI draft agenda confirming the item was published as at 12 August, so the date rests on the plenary agenda's forecast column and is recorded as expected, not confirmed.",
+    "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html",
+    "institution": "ep",
+    "occurred": false,
+    "mid": "ms-envi-msr-vote",
+    "tlTier": 1,
+    "tlStart": "2026-09-10",
+    "tlEnd": null,
+    "tlProvisional": true,
+    "tlLabel": "ENVI vote: MSR report",
+    "tlDateText": "10 Sep (expected)",
+    "tlTierWhy": "Committee vote on a report — fixes an EP negotiating position"
   },
   {
     "date": "2026-09 (as early as, forecast)",
@@ -18327,7 +18774,15 @@ DOSSIERS = {
     "note": "Peter Liese told Contexte he intends to finalise his draft report “as early as September” — not yet a confirmed committee-calendar date, but the clearest signal so far of when Parliament’s own text might land.",
     "url": null,
     "institution": "ep",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-liese-report",
+    "tlTier": 1,
+    "tlStart": "2026-09-01",
+    "tlEnd": null,
+    "tlProvisional": true,
+    "tlLabel": "Liese draft report",
+    "tlDateText": "Sep at earliest",
+    "tlTierWhy": "Rapporteur's draft report — Parliament's first text"
   },
   {
     "date": "2026-09-14",
@@ -18336,7 +18791,15 @@ DOSSIERS = {
     "note": "Three files are taken together: item 46, the MSR-invalidation file, 2026/0085(COD), on Pierfrancesco Maran's report, with committee adoption expected 10/09; item 29, the extension of CBAM to downstream goods and anti-circumvention measures, 2025/0419(COD), on Mohammed Chahim's report A10-0201/2026, adopted in ENVI on 9 July; and item 30, the Temporary Decarbonisation Fund, 2025/0418(COD), on Pascal Canfin's report. The draft agenda does not yet allocate the votes on these three to a named voting slot. The MSR file matters beyond its own scope: it amends Decision (EU) 2015/1814, which the ETS Directive review, COM(2026) 616, also amends, so Parliament will fix a first-reading position on reserve design before the review has a committee responsible. The amendments already tabled on it are not technical — a hard €45/t ceiling (Patriots), outright rejection (The Left) and a 400m→600m invalidation threshold (Renew/Wiesner) are all on the table.",
     "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html",
     "institution": "ep",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-plenary-debate",
+    "tlTier": 2,
+    "tlStart": "2026-09-14",
+    "tlEnd": null,
+    "tlProvisional": false,
+    "tlLabel": "Joint debate: MSR, CBAM, TDF",
+    "tlDateText": "14 Sep",
+    "tlTierWhy": "Plenary debate, not a decision — and mostly on adjacent files"
   },
   {
     "date": "2026-09-15",
@@ -18346,7 +18809,14 @@ DOSSIERS = {
     "note": "First-reading vote on the targeted amendment of Decision (EU) 2015/1814 as regards the market stability reserve for buildings, road transport and additional sectors, 2025/0380(COD) — the ETS2 reserve file — on Danuše Nerudová's report A10-0098/2026. ENVI endorsed the provisional agreement from the single informal trilogue of 10 June on 6 July 2026, so the plenary vote is the confirmation step. Tracked here under the ETS1/ETS2 bundling watch: both systems sit in Directive 2003/87/EC and both reserves in Decision (EU) 2015/1814, so a plenary text on the ETS2 reserve lands in the same voting week as Parliament's first position on the ETS1 reserve.",
     "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-15_EN.html",
     "institution": "ep",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-plenary-msr2",
+    "tlTier": 1,
+    "tlStart": "2026-09-15",
+    "tlEnd": null,
+    "tlProvisional": false,
+    "tlOmit": true,
+    "tlTierWhy": "Off the timeline: a separate legislative process (the ETS2 reserve, 2025/0380(COD)) that is already politically concluded — ENVI endorsed the trilogue agreement on 6 July — and which does not bear on the ongoing ETS1 review. Retained as a milestone card."
   },
   {
     "date": "2027 Q1 (target)",
@@ -18355,7 +18825,16 @@ DOSSIERS = {
     "note": "Joint Council/Parliament/Commission target, not a legally binding deadline.",
     "url": null,
     "institution": "joint",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-target-ga",
+    "tlTier": 1,
+    "tlStart": "2027-01-01",
+    "tlEnd": "2027-03-31",
+    "tlProvisional": true,
+    "tlLabel": "Target political agreement",
+    "tlOffScale": true,
+    "tlDateText": "Q1 2027 (target)",
+    "tlTierWhy": "Trilogue / political agreement (target)"
   },
   {
     "date": "2026-07-23/24",
@@ -18364,7 +18843,12 @@ DOSSIERS = {
     "note": "Two-day informal meeting (23-24 Jul), chaired by Irish Minister Darragh O'Brien — first substantive ministerial exchange on the Commission's ETS1 proposal; informal format, no decisions taken. Sweden (Westlén) pushed back sharply on the LRF/free-allocation easing; Commissioner Roswall defended the package. O'Brien's stated target: agreement by the December Environment Council.",
     "url": "https://www.rte.ie/news/world/2026/0724/1584943-divisions-emerge-as-talks-begin-over-eu-climate-reform/",
     "institution": "council",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-dublin",
+    "tlTier": 3,
+    "tlStart": "2026-07-23",
+    "tlEnd": "2026-07-24",
+    "tlProvisional": false
   },
   {
     "date": "2026-10-12",
@@ -18373,7 +18857,15 @@ DOSSIERS = {
     "note": "First formal Environment Council under the Irish Presidency. Per Agence Europe, will also adopt the EU position on COP31 agenda items (just transition, electrification).",
     "url": "https://agenceurope.eu/index.php/en/bulletin/article/13898/19",
     "institution": "council",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-envcouncil-oct",
+    "tlTier": 2,
+    "tlStart": "2026-10-12",
+    "tlEnd": null,
+    "tlProvisional": false,
+    "tlLabel": "Environment Council",
+    "tlDateText": "12 Oct",
+    "tlTierWhy": "Scheduled Council session with no procedural act announced"
   },
   {
     "date": "2026-09-14/17",
@@ -18382,7 +18874,12 @@ DOSSIERS = {
     "note": "Referral is announced in plenary under Rule 58, and the next Strasbourg part-session is 14-17 September 2026. Until then the Legislative Observatory records no committee responsible for the ETS Directive review, 2026/0212(COD) (COM(2026) 616), the 2026-2030 fallback-benchmarks proposal, 2026/0211(COD) (COM(2026) 619), or the maritime MRV/FuelEU alignment Regulation, 2026/0210(COD) (COM(2026) 620), and names no rapporteur on any of them. **Read that as a fact about the register, not about the file.** Peter Liese has been the rapporteur on COM(2026) 616 since his own press release of 17 July 2026 (“will also serve as rapporteur… will begin work immediately”), and told Contexte on 24 July that he intends to finalise his draft report as early as September; Adam Jarubas (EPP, PL) leads COM(2026) 619. The Observatory publishes formal confirmations and routinely lags the political reality by weeks — this is the concrete instance of that lag, and the useful content of the milestone is the timing of the formal track (committee competence, amendment deadlines, budgetary-assessment referral), not the identity of the pen-holder, which is settled. Contrast the MSR-invalidation file 2026/0085(COD), where Pierfrancesco Maran was registered on 16 July 2026, so the register is capable of moving quickly when the referral has been announced.",
     "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0212(COD)",
     "institution": "ep",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-rule58",
+    "tlTier": 3,
+    "tlStart": "2026-09-14",
+    "tlEnd": "2026-09-17",
+    "tlProvisional": true
   },
   {
     "date": "2026-07-24 → 2026-08-07",
@@ -18391,7 +18888,12 @@ DOSSIERS = {
     "note": "Between the Working Party on the Environment sessions of 20/22 July and the next one on 1 September, the Irish Presidency kept the ETS Directive review, COM(2026) 616, moving in writing. WK 10983/2026 (24 Jul) is a request for contribution — a written call for comments following the July meetings. On 31 July the Presidency circulated informal consolidated versions of all four instruments of the package: WK 10996/2026 for the ETS proposal, WK 11115/2026 for the Market Stability Reserve Decision, WK 11114/2026 for the FuelEU Maritime Regulation and WK 11116/2026 for the shipping MRV Regulation. WK 11200/2026 (7 Aug) is an 'ETS Review: Cap distribution flow chart', and the register records it against a meeting date of 2 September 2026 — the second of the thirteen September Working Party sessions — which is the first indication of what any September session will actually take, no CM provisional agenda having been published. Separately, ST 12176/2026 of 23 July transmitted a Commission Declaration on the proposal to delegations, carrying both 2026/0212(COD) and the fallback-benchmarks file 2026/0211(COD). The bodies of the six WK documents are withheld from public access; their titles, dates, numbers and meeting attributions are what the register positively records. The sequencing matters more than any single document: consolidated texts existing on 31 July means the September compromise is being drafted from written national comments gathered in July, not produced by the September sessions.",
     "url": "https://www.consilium.europa.eu/en/documents/public-register/public-register-search/?InterinstitutionalFiles=2026%2F0212(COD)",
     "institution": "council",
-    "occurred": true
+    "occurred": true,
+    "mid": "ms-worktrack",
+    "tlTier": 3,
+    "tlStart": "2026-07-24",
+    "tlEnd": "2026-08-07",
+    "tlProvisional": false
   },
   {
     "date": "2026-09-01",
@@ -18400,7 +18902,15 @@ DOSSIERS = {
     "note": "Per Agence Europe (25 Jul, EU Council source): post-Dublin, there is ‘little common ground on substance’ yet — Member States were given ‘summer homework’ to define clear August positions so the Presidency can table a first compromise text in September. No fixed date beyond ‘September’ confirmed yet.",
     "url": "https://agenceurope.eu/index.php/en/bulletin/article/16618/1",
     "institution": "council",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-compromise",
+    "tlTier": 2,
+    "tlStart": "2026-09-01",
+    "tlEnd": null,
+    "tlProvisional": true,
+    "tlLabel": "Presidency compromise text",
+    "tlDateText": "1 Sep (expected)",
+    "tlTierWhy": "Presidency working document, not a formal act"
   },
   {
     "date": "2026-09-24",
@@ -18409,7 +18919,12 @@ DOSSIERS = {
     "note": "Some delegations want the Commission to present more of the wider post-2030 energy/climate policy framework before finalising ETS positions — an expert-level discussion on that framework's architecture is now scheduled for 24 Sep. Worth watching whether this sequencing slows the Presidency's own Sep/Dec ETS timeline. Logged under Council: this is a workshop requested by Member States, with the Commission presenting — Parliament is not involved.",
     "url": "https://agenceurope.eu/index.php/en/bulletin/article/16618/1",
     "institution": "council",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-expert-talks",
+    "tlTier": 3,
+    "tlStart": "2026-09-24",
+    "tlEnd": null,
+    "tlProvisional": false
   },
   {
     "date": "2026-12-11",
@@ -18418,7 +18933,15 @@ DOSSIERS = {
     "note": "The Irish Presidency hopes for a political agreement in principle on the ETS1 revision at this Council — earlier than the Q1 2027 target below. Per Agence Europe (25 Jul): at this stage there's only unanimous agreement that ETS needs improving and must serve EU competitiveness — methods diverge sharply by delegation, so this timeline should be read as ambitious, not settled.",
     "url": "https://agenceurope.eu/index.php/en/bulletin/article/13898/19",
     "institution": "council",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-envcouncil-dec",
+    "tlTier": 1,
+    "tlStart": "2026-12-11",
+    "tlEnd": null,
+    "tlProvisional": false,
+    "tlLabel": "Environment Council — target GA",
+    "tlDateText": "11 Dec",
+    "tlTierWhy": "Council General Approach (target) — the Council mandate"
   },
   {
     "date": "2026-09-01 → 2026-09-29",
@@ -18426,7 +18949,12 @@ DOSSIERS = {
     "text": "The Council's meeting register now lists thirteen WPE sessions in September 2026: 1, 2, 4, 8, 9, 14, 15, 17, 21, 23, 25, 28 and 29 September (meeting nos. 369361, 369380, 369421, 369576, 369585, 369690, 369718, 369765, 369871, 369927, 369964, 370050, 370063). Eight of these were added since the 3 Aug run, which found five. For comparison the whole of July held three (17, 20, 22 Jul) and August holds none. No CM provisional agenda is published for any of them yet, which is normal four to seven weeks out — but the cadence is itself the signal: read alongside the Irish Presidency's September compromise-text target and its 11 Dec political-agreement goal, Dublin has reserved enough technical sessions to process a full text article by article before the October Environment Council. WPE also handles non-ETS environment files, so not every session will be ETS1; the volume, not the attribution, is the finding.",
     "url": "https://www.consilium.europa.eu/en/meetings/mpo/2026/9/wp-on-the-environment-(369690)/",
     "institution": "council",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-wpe-sept",
+    "tlTier": 3,
+    "tlStart": "2026-09-01",
+    "tlEnd": "2026-09-29",
+    "tlProvisional": false
   },
   {
     "date": "2026-09 (from)",
@@ -18435,7 +18963,15 @@ DOSSIERS = {
     "note": "The Commission's own WPE presentation states that stakeholder consultations on the Investment Booster — phase 1 of the Industrial Decarbonisation Bank, 400m Phase-4 allowances (~€30bn at €75/t) disbursed from 2028 on a first-in-first-served basis via a fixed carbon premium — “start in September 2026”. This is the first concrete engagement window on the instrument E.ON has the most direct interest in (§92), and it opens before the Presidency's compromise text rather than after it. Phase 2 from 2031 switches to competitive bidding with carbon contracts for difference, 400m further allowances, €100bn across both phases.",
     "url": "https://data.consilium.europa.eu/doc/document/WK-10833-2026-INIT/en/pdf",
     "institution": "comm",
-    "occurred": false
+    "occurred": false,
+    "mid": "ms-booster",
+    "tlTier": 2,
+    "tlStart": "2026-09-01",
+    "tlEnd": null,
+    "tlProvisional": true,
+    "tlLabel": "Investment Booster consultation",
+    "tlDateText": "from Sep",
+    "tlTierWhy": "Commission consultation on a proposed instrument"
   }
 ],
       "milestonesLastChecked": "2026-08-11",
@@ -18614,9 +19150,59 @@ DOSSIERS = {
       "Unchanged: nothing has reached the Council register on the ETS Directive review, COM(2026) 616, since the Presidency's cap-distribution flow chart, WK 11200/2026, of 7 August, and no CM provisional agenda is published for any September Working Party session.",
       "Still open, carried forward: Peter Liese's draft report on the ETS Directive review, signalled for as early as September, and the national final allocation decisions timetabled from September."
     ],
-    "impactNote": "For E.ON: the September part-session gives Parliament a first-reading position on the market stability reserve weeks before Peter Liese's draft report on the ETS Directive review, COM(2026) 616, is expected, and the two overlap in law. The MSR-invalidation file, 2026/0085(COD), amends Decision (EU) 2015/1814; the Legislative Observatory records COM(2026) 616 as amending both Directive 2003/87/EC and that same Decision. Whatever the plenary adopts on 14-17 September therefore becomes Parliament's standing reference on reserve design before the review has a committee responsible for it. The amendments already tabled on the MSR file are not technical: a hard €45/t price ceiling backstopped by a strengthened reserve (Patriots), outright rejection (The Left) and raising the invalidation threshold from 400m to 600m rather than removing it (Renew, Wiesner). The operative deadline is therefore the ENVI vote of 10 September, not the plenary week. The sharper question to settle before then is whether the Article 29a ask — the price-containment mechanism the July proposal leaves untouched — is better carried as an amendment on the MSR file, where a committee vote is roughly four weeks away and price-stability amendments are already on the table, or held for the review, where no committee is yet seised and the first text will be the rapporteur's.",
-    "sourceLabel": "European Parliament draft agenda, Strasbourg part-session 14-17 September 2026 (version 15 Jul 2026); EP Legislative Observatory, procedure files 2026/0212(COD) (the ETS Directive review), 2026/0211(COD) (the fallback-benchmarks proposal), 2026/0210(COD) (the maritime MRV/FuelEU alignment Regulation) and 2026/0085(COD) (the MSR-invalidation file); Council of the EU public register; ENVI Latest Documents; Trading Economics — all checked 12 Aug 2026",
-    "sourceUrl": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html"
+    "impactNote": "For E.ON: the sharpest open question is whether the trigger multiple alone carries the Article 29a ask. Art. 29a(1) releases a fixed 75 million allowances and Art. 29a(2) bars a second release for twelve months, so even at 1.5 the mechanism delivers one capped release a year — quantum and cooldown need asks of their own. On vehicle: Article 29a sits in Directive 2003/87/EC, so the MSR-invalidation file, 2026/0085(COD), cannot carry it; the ask belongs in the ETS Directive review, COM(2026) 616. Whether to resist the €45/t ETS1 ceiling tabled on that file is a separate decision, not a corollary of the trigger ask.",
+    "sourceLabel": "European Parliament draft agenda, Strasbourg part-session 14-17 September 2026 (version 15 Jul 2026)",
+    "sourceUrl": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html",
+    "sources": [
+      {
+        "label": "European Parliament draft agenda, Strasbourg part-session 14-17 September 2026 (version 15 Jul 2026) — Monday 14 Sep, joint debate on emissions trading",
+        "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-14_EN.html"
+      },
+      {
+        "label": "European Parliament draft agenda, 15 September 2026 — 12:00 voting session, item 51",
+        "url": "https://www.europarl.europa.eu/doceo/document/OJQ-10-2026-09-15_EN.html"
+      },
+      {
+        "label": "EP Legislative Observatory — 2026/0212(COD), the ETS Directive review",
+        "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0212(COD)"
+      },
+      {
+        "label": "EP Legislative Observatory — 2026/0211(COD), the fallback-benchmarks proposal",
+        "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0211(COD)"
+      },
+      {
+        "label": "EP Legislative Observatory — 2026/0210(COD), the maritime MRV/FuelEU alignment Regulation",
+        "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0210(COD)"
+      },
+      {
+        "label": "EP Legislative Observatory — 2026/0085(COD), the MSR-invalidation file (Maran, rapporteur since 29 May 2026)",
+        "url": "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0085(COD)"
+      },
+      {
+        "label": "Council of the EU public register — interinstitutional file 2026/0212(COD); newest entry WK 11200/2026 of 7 Aug, the Presidency's cap-distribution flow chart",
+        "url": "https://www.consilium.europa.eu/en/documents/public-register/public-register-search/?InterinstitutionalFiles=2026%2F0212(COD)"
+      },
+      {
+        "label": "Council of the EU public register — CM documents since 1 Aug 2026: no result, so no provisional agenda is published for any September Working Party session",
+        "url": "https://www.consilium.europa.eu/en/documents/public-register/public-register-search/"
+      },
+      {
+        "label": "ENVI Latest documents — newest ETS-relevant item remains PE791.123 of 28 Jul, the second Environmental-Omnibus amendment batch",
+        "url": "https://www.europarl.europa.eu/committees/en/envi/documents/latest-documents"
+      },
+      {
+        "label": "ENVI committee meetings — 1, 2 and 10 September 2026, Brussels",
+        "url": "https://www.europarl.europa.eu/committees/en/envi/home/highlights"
+      },
+      {
+        "label": "Directive 2003/87/EC consolidated (02003L0087 — 01.03.2024), Article 29a — trigger multiple, 75m release, twelve-month cooldown",
+        "url": "https://eur-lex.europa.eu/eli/dir/2003/87/2024-03-01/eng"
+      },
+      {
+        "label": "Trading Economics, EU Carbon Permits — 11 Aug settle confirmed at €82.44",
+        "url": "https://tradingeconomics.com/commodity/carbon"
+      }
+    ]
   },
   {
     "date": "2026-08-11",
