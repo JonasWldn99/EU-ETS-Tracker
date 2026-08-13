@@ -75,6 +75,15 @@
   .sdb-col { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); }
   .sdb-col-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 9px; margin-bottom: 11px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 13px; color: var(--text-primary); }
   .sdb-col-count { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); font-weight: 400; }
+  .sdb-na { color: var(--text-tertiary); font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.04em; font-style: italic; padding-top: 6px; margin-top: 6px; border-top: 1px dashed var(--border); }
+  .sdb-tag { display: inline-block; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-secondary); margin-right: 4px; }
+  .sdb-tag--gov { border-color: var(--text-secondary); color: var(--text-primary); }
+  .sdb-tag--dim { opacity: 0.55; }
+  .sdb-metaline { display: block; font-size: 10px; color: var(--text-secondary); line-height: 1.5; }
+  .sdb-prov { opacity: 0.6; font-style: italic; }
+  .sdb-subrow { margin-top: 4px; }
+  .sdb-sub { display: inline-block; font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; margin-right: 4px; border: 1px dashed var(--border); border-radius: 3px; color: var(--text-secondary); }
+  .sdb-mandate { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.05em; color: var(--text-tertiary); margin-left: 8px; }
   .sdb-chartbox { border: 1px dashed var(--border); border-radius: 9px; padding: 13px 11px; margin-bottom: 12px; text-align: center; background: var(--bg); }
   .sdb-chartbox-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 8px; }
   .sdb-chartbox-empty { font-size: 11px; color: var(--text-tertiary); line-height: 1.5; padding: 16px 0; }
@@ -3589,11 +3598,134 @@ function sdbJumpTo(id, scope) {
    the Commission DG list comes from the realm registry, since the full apparatus
    belongs to the realm rather than to any single file.
    ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   DE REGISTRY OVERVIEW (13 Aug 2026)
+   Renders the DE realm's stakeholder universe from REALMS.de.config, before any
+   German dossier exists. Same three-column layout, same card helper and same
+   search index as the EU view — one renderer vocabulary, not two (§172).
+
+   Every card carries "not yet assessed", because that is true and because it is
+   the tool's existing null case. Nothing here fabricates a position.
+   --------------------------------------------------------------------------- */
+const SDB_DE_LAENDER_SHOWN = 12;
+
+function sdbNotAssessedHTML() {
+  return '<div class="sdb-card-body sdb-na">Not yet assessed — no German dossier active</div>';
+}
+
+function renderRegistryOverviewDE(container, realm) {
+  const cfg = realm.config;
+  sdbIndexReset();
+
+  /* ---- Bundestag: Fraktionen by seats ---- */
+  const frak = (cfg.bundestag.fraktionen || []).slice().sort((a, b) => (b.seats || 0) - (a.seats || 0));
+  const pol = (cfg.politicalWeights && cfg.politicalWeights.btPolitical) || {};
+  const btHTML = frak.map(f => {
+    sdbIndexAdd({ id: 'de-frak-' + f.id }, f.name, `Bundestag · ${f.seats} Sitze`, 'group', []);
+    const tags = [];
+    if (f.governing) tags.push('<span class="sdb-tag sdb-tag--gov">Regierungsfraktion</span>');
+    if (f.coalitionAvailable === true) tags.push('<span class="sdb-tag">regierungsfähig</span>');
+    if (f.coalitionAvailable === false) tags.push('<span class="sdb-tag sdb-tag--dim">nicht regierungsfähig</span>');
+    if (f.tierType !== 'Fraktion') tags.push(`<span class="sdb-tag sdb-tag--dim">${f.tierType}</span>`);
+    const sub = (f.subEntities || []).map(e => `<span class="sdb-sub">${e.name}</span>`).join('');
+    const pw = pol[f.id];
+    const body = `<div class="sdb-card-body">${tags.join(' ')}${sub ? '<div class="sdb-subrow">' + sub + '</div>' : ''}` +
+      (pw !== undefined ? `<div class="sdb-metaline">Politisches Gewicht ${pw.toFixed(1)} <span class="sdb-prov">(vorgeschlagen)</span></div>` : '') +
+      '</div>' + sdbNotAssessedHTML();
+    return sdbCardHTML(f.name, `${f.seats} Sitze`, body, 'sdb-card--ms', 'de-frak-' + f.id, null);
+  }).join('');
+
+  /* ---- Bundesrat: 12 Flächenländer shown, Stadtstaaten + Saarland one click away ----
+     Jonas, 13 Aug 2026. Ordered by size. Same staged-expansion idiom as the EP
+     delegations and the Member State list (§130) — nothing is dropped. */
+  const laender = (cfg.bundesrat.laender || []).slice().sort((a, b) => (a.sizeRank || 99) - (b.sizeRank || 99));
+  const isHidden = l => l.isStadtstaat || l.id === 'de-sl';
+  const shown = laender.filter(l => !isHidden(l));
+  const rest  = laender.filter(isHidden);
+  const brKey = 'sdb-de-laender-rest';
+  const landCard = l => {
+    const bits = [];
+    if (l.eonTier === 1) bits.push(`<span class="sdb-tag sdb-tag--gov">E.ON-Netzgebiet</span>`);
+    if ((l.eonDsos || []).length) bits.push(`<span class="sdb-metaline">${l.eonDsos.join(' · ')}</span>`);
+    if (l.headOfGovernment) bits.push(`<span class="sdb-metaline">${l.headOfGovernmentTitle}: ${l.headOfGovernment}${l.hogParty ? ' (' + l.hogParty + ')' : ''}${l.coalition ? ' · ' + l.coalition.join('/') : '<span class="sdb-prov"> · Koalition noch nicht verifiziert</span>'}</span>`);
+    else bits.push('<span class="sdb-metaline sdb-prov">Landesregierung noch nicht verifiziert</span>');
+    if (l.nextElection) bits.push(`<span class="sdb-metaline sdb-prov">Landtagswahl ${l.nextElection}</span>`);
+    return sdbCardHTML(l.name, `${l.brVotes} Stimmen`, `<div class="sdb-card-body">${bits.join('')}</div>` + sdbNotAssessedHTML(),
+      'sdb-card--ms', 'de-land-' + l.id, null);
+  };
+  shown.forEach(l => sdbIndexAdd({ id: 'de-land-' + l.id }, l.name, `Bundesrat · ${l.brVotes} Stimmen`, 'council', []));
+  rest.forEach(l  => sdbIndexAdd({ id: 'de-land-' + l.id }, l.name, `Bundesrat · ${l.brVotes} Stimmen`, 'council', [brKey]));
+  let brHTML = shown.map(landCard).join('');
+  if (expandState[brKey]) brHTML += rest.map(landCard).join('');
+  if (rest.length) brHTML += sdbToggleHTML(brKey,
+    `Stadtstaaten und Saarland ausblenden`,
+    `${rest.length} weitere Länder anzeigen (Stadtstaaten, Saarland)`);
+
+  /* ---- Bundesregierung: ministries, then subordinate authorities ---- */
+  const mins = cfg.bundesregierung.ministries || [];
+  const ags  = cfg.bundesregierung.agencies || [];
+  const minCard = m => {
+    const who = m.minister ? `${m.minister}${m.party ? ' (' + m.party + ')' : ''}` : '<span class="sdb-prov">Leitung noch nicht verifiziert</span>';
+    return sdbCardHTML(m.abbr, '', `<div class="sdb-card-body"><span class="sdb-metaline">${m.name}</span><span class="sdb-metaline">${who}</span></div>` + sdbNotAssessedHTML(),
+      'sdb-card--ms', 'de-min-' + m.id, null);
+  };
+  mins.forEach(m => sdbIndexAdd({ id: 'de-min-' + m.id }, m.abbr, `Bundesregierung · ${m.name}`, 'comm', []));
+  const agKey = 'sdb-de-agencies';
+  ags.forEach(a => sdbIndexAdd({ id: 'de-ag-' + a.id }, a.abbr, `Nachgeordnete Behörde · ${a.name}`, 'comm', [agKey]));
+  let bregHTML = mins.map(minCard).join('');
+  if (expandState[agKey]) {
+    bregHTML += ags.map(a => sdbCardHTML(a.abbr, '', `<div class="sdb-card-body"><span class="sdb-metaline">${a.name}</span><span class="sdb-metaline sdb-prov">nachgeordnete Behörde</span></div>` + sdbNotAssessedHTML(),
+      'sdb-card--ms', 'de-ag-' + a.id, null)).join('');
+  }
+  if (ags.length) bregHTML += sdbToggleHTML(agKey,
+    `Nachgeordnete Behörden ausblenden`, `${ags.length} nachgeordnete Behörden anzeigen`);
+
+  const seatTotal = frak.reduce((a, f) => a + (f.seats || 0), 0);
+  const voteTotal = laender.reduce((a, l) => a + (l.brVotes || 0), 0);
+
+  container.innerHTML = `
+    <div class="sdb-intro">The stakeholder universe for <strong>${realm.label}</strong>, built ahead of any German dossier so the basis exists before tracking starts.
+    <strong>No positions are recorded anywhere in this realm</strong> — every actor shows as not yet assessed, and will fill in automatically once a dossier is activated.
+    Bundestag seat counts are read from bundestag.de (${cfg.bundestag.seatsVerifiedOn}); the ${voteTotal} Bundesrat votes are fixed by Art. 51(2) GG, with ${cfg.chamberRules.bundesratAbsoluteMajority} needed for an absolute majority.
+    Note that a Land votes as a bloc and an abstention counts against that majority, so a divided coalition effectively votes No (Art. 51(3), 52(3) GG).
+    The 16 Land governments and the 630 individual members are not yet verified and are marked as such.</div>
+    ${sdbSearchBoxHTML()}
+    <div class="sdb-cols">
+      <div class="sdb-col">
+        <div class="sdb-col-head"><span>Deutscher Bundestag<span class="sdb-mandate">${cfg.bundestag.term}</span></span><span class="sdb-col-count">${seatTotal} Sitze</span></div>
+        ${sdbChartBoxHTML('Deutscher Bundestag')}
+        ${btHTML}
+      </div>
+      <div class="sdb-col">
+        <div class="sdb-col-head"><span>Bundesrat · Länder</span><span class="sdb-col-count">${voteTotal} Stimmen</span></div>
+        ${sdbChartBoxHTML('Bundesrat')}
+        ${brHTML}
+      </div>
+      <div class="sdb-col">
+        <div class="sdb-col-head"><span>Bundesregierung<span class="sdb-mandate">${cfg.bundesregierung.mandate.label}</span></span><span class="sdb-col-count">${mins.length} Ressorts</span></div>
+        ${sdbChartBoxHTML('Bundesregierung')}
+        ${bregHTML}
+      </div>
+    </div>`;
+}
+
 function renderStakeholderDbView() {
   const container = document.getElementById('stakeholderDbView');
   const realm = getRealm();
   const dossiers = realmDataDossiers(currentRealmId);
   const dgs = (realm.config && realm.config.commissionDGs) || null;
+
+  // A realm can have a stakeholder REGISTRY before it has any dossier. §169's
+  // boxes are computed from stance data and there is none yet — but the
+  // stakeholder UNIVERSE is known, and showing it is the whole point of building
+  // the realm ahead of a file. Every actor therefore renders with the tool's
+  // settled null case, dim grey "not yet assessed" (§172), rather than the realm
+  // rendering as one empty panel. Added 13 Aug 2026 after Jonas pointed out the
+  // DE page was still blank once the registry existed.
+  if (!dossiers.length && realm.config && realm.config.bundestag) {
+    renderRegistryOverviewDE(container, realm);
+    return;
+  }
 
   if (!dossiers.length && !dgs) {
     container.innerHTML = placeholderPanelHTML(
@@ -19685,10 +19817,302 @@ const REALMS = {
       legislature: 'Deutscher Bundestag',
       legislatureShort: 'BT',
       secondChamber: 'Bundesrat',
-      procedure: 'Gesetzgebungsverfahren Bundestag/Bundesrat — not yet modelled',
-      stakeholderUniverse: 'Bundestagsabgeordnete und Fraktionen, Länder im Bundesrat, Bundesministerien',
-      institutionIds: [],
-      note: 'The DE Policy realm is structurally in place but deliberately not yet populated. Different stakeholders (MdB rather than MEPs), different committees and a different legislative procedure apply; these will be modelled separately before any DE dossier goes live.'
+      procedure: 'Gesetzgebungsverfahren, Art. 76-78 GG — Zustimmungsgesetz (absolute Bundesrat veto) vs. Einspruchsgesetz (Bundestag can override)',
+      stakeholderUniverse: 'Bundestagsabgeordnete und Fraktionen, Länder im Bundesrat, Bundesregierung und nachgeordnete Behörden',
+      institutionIds: ['bt', 'br', 'breg'],
+
+      // ---------------------------------------------------------------------
+      // DE REALM STAKEHOLDER REGISTRY (Jonas, 13 Aug 2026)
+      // Structure only. NO positions are recorded anywhere in this realm yet,
+      // and no DE dossier is activated — de-dossier-a/b remain placeholders.
+      //
+      // Lives at REALM level, not on a dossier, mirroring how the EU realm owns
+      // the DG registry, the Council Presidency record and the political-weight
+      // model. That is what makes "structure without a dossier" expressible.
+      //
+      // Mapping agreed with Jonas: Bundestag ~ EP, Bundesrat ~ Council,
+      // Bundesregierung ~ Commission. The analogy is sound and legible to an EU
+      // reader, but it breaks in three places that are modelled explicitly below
+      // (chamberRules.abstentionEqualsNo, chamberRules.consentLawTest, and the
+      // coalition adjustment in politicalWeights). Do not "simplify" the DE
+      // realm back onto the EU realm's shape without reading those three.
+      // ---------------------------------------------------------------------
+      registryBuiltOn: '2026-08-13',
+      registryStatus: 'institutional-actors-populated',
+
+      chamberRules: {
+        // All citations verified against bundesrat.de/DE/bundesrat/verteilung
+        // and the Grundgesetz, 13 Aug 2026.
+        bundesratTotalVotes: 69,
+        bundesratAbsoluteMajority: 35,   // Art. 52(3) GG
+        bundesratTwoThirds: 46,
+        voteAllocationRule: 'Art. 51(2) GG — 3 votes minimum; 4 above 2m inhabitants; 5 above 6m; 6 above 7m.',
+
+        // TRAP 1. THE SINGLE MOST IMPORTANT DIFFERENCE FROM THE COUNCIL.
+        // Art. 51(3) GG: "Die Stimmen eines Landes können nur einheitlich
+        // abgegeben werden" — a Land votes as a bloc. Nearly every Land
+        // coalition agreement contains an Enthaltungsklausel requiring
+        // abstention where the partners disagree. Because Art. 52(3) requires an
+        // ABSOLUTE majority of votes (35 of 69, not of votes cast), an abstention
+        // has the exact arithmetic effect of a No.
+        // Consequence for scoring: a "mixed" Land is NOT a neutral data point the
+        // way a mixed Member State is. Aggregation must compute VOTES AVAILABLE
+        // FOR YES, never votes sympathetic. Scoring a Land like a Member State
+        // will systematically overstate support.
+        abstentionEqualsNo: true,
+        abstentionCause: 'Koalitionsklausel — a divided Land coalition abstains, and abstention counts against the absolute majority.',
+
+        // TRAP 2. The Bundesrat's weight is FILE-CONDITIONAL, which has no EU
+        // analogue. Zustimmungsgesetz: absolute veto. Einspruchsgesetz: the
+        // Bundestag can override under Art. 77(4) GG. Which applies turns mainly
+        // on Art. 84(1) GG — whether the law imposes administrative procedure on
+        // the Länder. Energy files split both ways. Each future DE dossier must
+        // therefore declare its law type; the Bundesrat weight multiplier follows
+        // from that and must never be hard-coded here.
+        consentLawTest: 'Art. 84(1) GG — does the law regulate Länder administrative procedure or authority organisation?',
+        lawTypeRequiredPerDossier: true,
+        lawTypes: ['Zustimmungsgesetz', 'Einspruchsgesetz'],
+
+        mediationCommittee: 'Vermittlungsausschuss, Art. 77(2) GG — 16 Bundestag + 16 Bundesrat members. Where contested files are actually settled; closest functional analogue to a trilogue.',
+        source: 'https://www.bundesrat.de/DE/bundesrat/verteilung/verteilung.html'
+      },
+
+      // ---------------------------------------------------------------------
+      // POLITICAL WEIGHT MODEL — deliberately NOT raw seats.
+      //
+      // The EU realm already coalition-adjusts EP group weights (Greens/EFA above
+      // ECR despite fewer seats, PfE discounted below its seat share) because
+      // seats measure size and not availability for a majority. The Bundestag
+      // needs the SAME adjustment more urgently, not less: the AfD is among the
+      // largest Fraktionen and is unavailable to every workable majority, so a
+      // raw-seat weighting would make it the heaviest actor in the German realm.
+      // That would be visibly wrong on a slide and wrong analytically.
+      //
+      // Weights are left NULL until the roster is harvested and the adjustment is
+      // agreed with Jonas — an unevidenced placeholder that looks like a finding
+      // is worse than a gap (§166). Do not fill these from a news article.
+      // ---------------------------------------------------------------------
+      politicalWeights: {
+        // TWO weightings, per Jonas 13 Aug 2026. Keep them separate.
+        //
+        // (a) btSeats — the UNADJUSTED basis. Every MdB has exactly one vote in
+        //     the Bundestag, so any normal (non-weight-adjusted) chart must treat
+        //     every member identically or it misrepresents what actually decides a
+        //     division. This is the DE analogue of the EU realm's "share of voices"
+        //     pie and it is simply the seat count.
+        //
+        // (b) btPolitical — the coalition-adjusted basis, for the political-weight
+        //     pie only. Germany differs from the EP in a way that makes this
+        //     simpler, not harder: the governing coalition is FIXED for the term,
+        //     so availability for a majority is a known fact rather than a
+        //     judgement about shifting alliances. Jonas's three ranks:
+        //       1. Regierungsparteien  — CDU/CSU, SPD           (multiplier 2.0)
+        //       2. Regierungsfähig     — Grüne (also FDP and Freie Wähler, neither
+        //                                currently in the Bundestag)  (1.0)
+        //       3. Nicht regierungsfähig — Linke, AfD (and BSW, not in the
+        //                                Bundestag)               (0.35)
+        //     Multipliers applied to seats, then normalised to 100.
+        //
+        // STATUS: PROPOSED, NOT APPROVED. The three multipliers are a first draft
+        // and are the only judgement in the model — change one number and the whole
+        // chart moves. Not to be treated as agreed until Jonas signs them off.
+        btPolitical: {
+          status: 'proposed-not-approved',
+          multipliers: { regierungspartei: 2.0, regierungsfaehig: 1.0, nichtRegierungsfaehig: 0.35 },
+          // Derived from the verified seat counts below; total 100.
+          'bt-union': 50.92, 'bt-spd': 29.38, 'bt-gruene': 10.40,
+          'bt-afd': 6.43, 'bt-linke': 2.74, 'bt-fraktionslos': 0.13
+        },
+        btSeats: { 'bt-union': 208, 'bt-afd': 150, 'bt-spd': 120, 'bt-gruene': 85, 'bt-linke': 64, 'bt-fraktionslos': 3 },
+        btWeightBasis: 'Two bases. btSeats for any unadjusted chart (one MdB, one vote). btPolitical for the weight-adjusted chart only.',
+        brLaender: 'Use the 69 constitutional votes directly. No 50/50 population-plus-equality construction is needed: Art. 51(2) GG already performed that trade-off, and does so more steeply than Council QMV (Bremen 3 votes, NRW 6 — roughly 26x degressivity on population).',
+        note: 'Bundestag and Bundesrat are NOT equal-weight the way EP and Council are. Bundesrat weight depends on the law type per dossier (chamberRules.consentLawTest), so realm-level parity cannot be asserted here.'
+      },
+
+      // ---------------------------------------------------------------------
+      // BUNDESTAG — 21. Wahlperiode, elected 23 Feb 2025, 630 seats fixed by the
+      // 2023 electoral reform.
+      //
+      // ROSTER NOT YET HARVESTED, AND THE SEAT FIGURES ARE DELIBERATELY NULL.
+      // Secondary sources consulted on 13 Aug 2026 returned conflicting Fraktion
+      // sizes because polling projections contaminate the search results. Per
+      // §185.1 nothing is recorded that has not been read off an authoritative
+      // source. bundestag.de/parlament/plenum/sitzverteilung is client-rendered,
+      // so the harvest needs the Chrome tooling, exactly as the 719-MEP roster
+      // did. Match on a stable member id, NEVER on names (§127).
+      //
+      // THREE TIERS, not two — the Bundestag distinguishes Fraktion (full
+      // rights), Gruppe (recognised, reduced rights) and fraktionslose
+      // Einzelabgeordnete. Modelling only "party + fraktionslos" would lose the
+      // middle tier, which currently holds BSW and the SSW.
+      // ---------------------------------------------------------------------
+      bundestag: {
+        term: '21. Wahlperiode',
+        electedOn: '2025-02-23',
+        totalSeats: 630,
+        // Fraktion sizes READ OFF bundestag.de/parlament/plenum/sitzverteilung via
+        // Chrome on 13 Aug 2026 (the page is client-rendered and returns nothing to
+        // a plain fetch). 208+150+120+85+64+3 = 630, asserted in QA.
+        //
+        // These numbers are the reason the 12 Aug caution was right: secondary
+        // aggregators consulted the same morning reported CDU/CSU 220 / AfD 160 /
+        // SPD 158, which is a POLLING PROJECTION reported in the same units as real
+        // seats. Nothing was written until the primary source was read.
+        seatsVerifiedOn: '2026-08-13',
+        seatsSource: 'https://www.bundestag.de/parlament/plenum/sitzverteilung',
+        // Individual members not yet harvested. Person pages carry a stable numeric
+        // id in the URL (e.g. /abgeordnete/biografien/A/abdi_sanae-1043330) — that
+        // id is the MdB analogue of mepId and MUST be the match key, never the name
+        // (§127). The A-Z list is paginated and same-origin fetch with query strings
+        // is blocked by the extension, so the harvest needs a per-letter walk.
+        memberRosterVerifiedOn: null,
+        memberIdPattern: '/abgeordnete/biografien/<INITIAL>/<name>-<mdbId>',
+        rosterNote: 'Fraktion-level counts verified. 630 individual members not yet harvested.',
+        fraktionen: [
+          // TAXONOMY CORRECTED 13 Aug 2026 against the Bundestag's own Fraktion
+          // filter, which offers exactly six values: CDU/CSU, AfD, SPD,
+          // Bündnis 90/Die Grünen, Die Linke, fraktionslos.
+          //
+          // The earlier three-tier model (Fraktion / Gruppe / fraktionslos) was
+          // built on a secondary source claiming BSW held 2 mandates and the SSW 1
+          // as recognised Gruppen. THE BUNDESTAG RECOGNISES NEITHER. BSW missed the
+          // 5% threshold in February 2025 and is not in the Bundestag at all; the
+          // SSW member sits among the 3 fraktionslose. Jonas said as much before the
+          // check and was right. The Gruppe tier is retained in the schema because
+          // it is a real constitutional category that has existed in past terms —
+          // it simply has no occupants now.
+          { id: 'bt-union', name: 'CDU/CSU', longName: 'CDU/CSU-Fraktion im Deutschen Bundestag', tierType: 'Fraktion', seats: 208, governing: true,
+            // ONE Fraktion, not two — a Fraktionsgemeinschaft. CSU modelled as a
+            // sub-entity so §143's split treatment fires by itself the day they
+            // diverge (nuclear, wind siting), instead of waiting for someone to
+            // notice a card needs restructuring.
+            subEntities: [
+              { id: 'bt-cdu', name: 'CDU', parentId: 'bt-union' },
+              { id: 'bt-csu', name: 'CSU', parentId: 'bt-union', note: 'Distinct energy positions, particularly on nuclear and wind siting in Bayern.' }
+            ] },
+          { id: 'bt-afd',    name: 'AfD',                   longName: 'AfD-Fraktion',                                    tierType: 'Fraktion',     seats: 150, governing: false, coalitionAvailable: false },
+          { id: 'bt-spd',    name: 'SPD',                   longName: 'SPD-Bundestagsfraktion',                          tierType: 'Fraktion',     seats: 120, governing: true },
+          { id: 'bt-gruene', name: 'Bündnis 90/Die Grünen', longName: 'Bundestagsfraktion Bündnis 90/Die Grünen',        tierType: 'Fraktion',     seats: 85,  governing: false, coalitionAvailable: true },
+          { id: 'bt-linke',  name: 'Die Linke',             longName: 'Fraktion Die Linke',                              tierType: 'Fraktion',     seats: 64,  governing: false, coalitionAvailable: false },
+          { id: 'bt-fraktionslos', name: 'Fraktionslose Abgeordnete',                                                     tierType: 'fraktionslos', seats: 3,   governing: false, note: 'Three members, including the SSW member. Not a Fraktion and not a Gruppe.' }
+        ],
+        // The Bundestag analogue of the EU realm's weightRole
+        // (rapporteur | coordinator | member). These are the people who move
+        // text; the other ~600 MdBs vote as their Fraktion decides.
+        keyRoles: ['energiepolitischer Sprecher', 'klimapolitischer Sprecher', 'Obmann/Obfrau im Ausschuss', 'Berichterstatter', 'Fraktionsvorsitz', 'Ausschussvorsitz'],
+        leadCommittees: [
+          { id: 'bt-aus-wirtschaft', name: 'Ausschuss für Wirtschaft und Energie', membersVerified: false },
+          { id: 'bt-aus-umwelt',     name: 'Ausschuss für Umwelt, Naturschutz, nukleare Sicherheit und Verbraucherschutz', membersVerified: false }
+        ]
+      },
+
+      // ---------------------------------------------------------------------
+      // BUNDESRAT — 16 Länder, 69 votes.
+      //
+      // brVotes are constitutionally fixed and are recorded as verified.
+      // headOfGovernment and coalition are LEFT NULL ON PURPOSE. Baden-Württemberg
+      // and Rheinland-Pfalz both changed government in March 2026 and three more
+      // Länder vote in September, so anything written from memory would be stale
+      // or wrong. These need one focused verification pass against
+      // bundesrat.de/DE/bundesrat/laender before they are filled.
+      //
+      // MANDATE LABELS, per Jonas: "Wüst I" plus the coalition composition, so a
+      // reader sees at a glance who governs and with whom. This is an improvement
+      // on the EU realm's bare "Merz I" and should be backported to the Member
+      // State cards there.
+      //
+      // CHURN WARNING: five Landtagswahlen in 2026 move 21 of 69 votes. Two have
+      // happened (BW 8 Mar, RP 22 Mar); three are imminent (Sachsen-Anhalt 6 Sep,
+      // Berlin and Mecklenburg-Vorpommern both 20 Sep) and together put 11 votes
+      // in play within five weeks. §137's monthly refresh needs a Länder branch
+      // running far more often than the national one.
+      // ---------------------------------------------------------------------
+      bundesrat: {
+        totalVotes: 69,
+        compositionVerifiedOn: null,
+        compositionSource: 'https://www.bundesrat.de/DE/bundesrat/laender/laender-node.html',
+        governmentsNote: 'headOfGovernment and coalition deliberately null pending one verification pass. Do not populate from memory. Bremen is the single confirmed entry so far (Dr. Andreas Bovenschulte, SPD, Präsident des Senats — bundesrat.de member list, read 13 Aug 2026).',
+
+        // LÄNDER TIERING, per Jonas 13 Aug 2026: priority follows E.ON's own
+        // distribution-grid footprint, because that is where a Land government's
+        // decisions actually reach our assets. Within a tier, sort by size
+        // (Bundesrat votes, then population).
+        //
+        // E.ON holds roughly 32% of German distribution networks through NINE
+        // regional DSOs — Avacon, Bayernwerk, E.DIS, enviaM, HanseWerk, LEW,
+        // Süwag/Syna, VSE and Westenergie — which also act together politically in
+        // Berlin as the "Puls 9" grouping. That alliance is itself a stakeholder
+        // and should get an entity of its own once the business layer is built.
+        //
+        // Consequence worth seeing: 13 of 16 Länder are tier 1. Only
+        // Baden-Württemberg (Netze BW/EnBW), Berlin (Stromnetz Berlin) and Bremen
+        // (wesernetz/swb) fall outside the footprint. So the tier does less
+        // filtering work here than §87 does for Member States — it is a genuine
+        // finding about how national E.ON's grid business is, not a weak model.
+        eonTierBasis: 'Tier 1 = at least one E.ON regional DSO operates in the Land. Tier 2 = none. Drives research effort only; the 69 Bundesrat votes are untouched by it.',
+        eonDsoMappingVerified: false,
+        eonDsoMappingNote: 'The nine-DSO list is verified. The DSO-to-Land mapping is drafted from general knowledge of the Netzgebiete and must be confirmed against each DSO\'s published network-area map before it is relied on.',
+        laender: [
+          { id: 'de-bw', name: 'Baden-Württemberg',      short: 'BW', brVotes: 6, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: '2026-03-08', nextElection: null , eonTier: 2, eonDsos: [], sizeRank: 3, isStadtstaat: false },
+          { id: 'de-by', name: 'Bayern',                 short: 'BY', brVotes: 6, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["Bayernwerk", "LEW"], sizeRank: 2, isStadtstaat: false },
+          { id: 'de-ni', name: 'Niedersachsen',          short: 'NI', brVotes: 6, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["Avacon", "HanseWerk"], sizeRank: 4, isStadtstaat: false },
+          { id: 'de-nw', name: 'Nordrhein-Westfalen',    short: 'NW', brVotes: 6, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["Westenergie"], sizeRank: 1, isStadtstaat: false },
+          { id: 'de-he', name: 'Hessen',                 short: 'HE', brVotes: 5, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["Syna (Süwag)", "Avacon"], sizeRank: 5, isStadtstaat: false },
+          { id: 'de-be', name: 'Berlin',                 short: 'BE', brVotes: 4, headOfGovernmentTitle: 'Regierender Bürgermeister', headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: '2026-09-20' , eonTier: 2, eonDsos: [], sizeRank: 8, isStadtstaat: true },
+          { id: 'de-bb', name: 'Brandenburg',            short: 'BB', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["E.DIS", "enviaM"], sizeRank: 10, isStadtstaat: false },
+          { id: 'de-rp', name: 'Rheinland-Pfalz',        short: 'RP', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: '2026-03-22', nextElection: null , eonTier: 1, eonDsos: ["Syna (Süwag)", "Westenergie"], sizeRank: 6, isStadtstaat: false },
+          { id: 'de-sn', name: 'Sachsen',                short: 'SN', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["enviaM / MITNETZ"], sizeRank: 7, isStadtstaat: false },
+          { id: 'de-st', name: 'Sachsen-Anhalt',         short: 'ST', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: '2026-09-06' , eonTier: 1, eonDsos: ["Avacon", "enviaM"], sizeRank: 11, isStadtstaat: false },
+          { id: 'de-sh', name: 'Schleswig-Holstein',     short: 'SH', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["HanseWerk / SH Netz"], sizeRank: 9, isStadtstaat: false },
+          { id: 'de-th', name: 'Thüringen',              short: 'TH', brVotes: 4, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["enviaM"], sizeRank: 12, isStadtstaat: false },
+          { id: 'de-hb', name: 'Bremen',                 short: 'HB', brVotes: 3, headOfGovernmentTitle: 'Präsident des Senats', headOfGovernment: 'Dr. Andreas Bovenschulte', hogParty: 'SPD', ordinal: null, coalition: null, hogVerified: true, hogSource: 'https://www.bundesrat.de/DE/bundesrat/mitglieder/mitglieder-node.html', mandateLabel: null, lastElection: null, nextElection: null , eonTier: 2, eonDsos: [], sizeRank: 16, isStadtstaat: true },
+          { id: 'de-hh', name: 'Hamburg',                short: 'HH', brVotes: 3, headOfGovernmentTitle: 'Erster Bürgermeister',     headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["HanseWerk"], sizeRank: 13, isStadtstaat: true },
+          { id: 'de-mv', name: 'Mecklenburg-Vorpommern', short: 'MV', brVotes: 3, headOfGovernmentTitle: 'Ministerpräsidentin',      headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: '2026-09-20' , eonTier: 1, eonDsos: ["E.DIS"], sizeRank: 14, isStadtstaat: false },
+          { id: 'de-sl', name: 'Saarland',               short: 'SL', brVotes: 3, headOfGovernmentTitle: 'Ministerpräsident',        headOfGovernment: null, ordinal: null, coalition: null, mandateLabel: null, lastElection: null, nextElection: null , eonTier: 1, eonDsos: ["VSE / energis"], sizeRank: 15, isStadtstaat: false }
+        ]
+      },
+
+      // ---------------------------------------------------------------------
+      // BUNDESREGIERUNG — the Commission analogue.
+      //
+      // The EU realm tracks DGs; the German analogue of a DG is an Abteilung
+      // within a ministry, and the tracker stays at ministry level for now.
+      // The Kanzleramt is treated as a ministry, per Jonas.
+      //
+      // BNetzA sits here as a subordinate authority, per Jonas's decision of
+      // 13 Aug 2026, rather than in its own column. Recorded openly because it is
+      // a compromise: BNetzA is functionally independent of BMWE on the decisions
+      // that matter most to E.ON (Netzentgelte, Netzentwicklungsplan,
+      // Ausschreibungen), so filing it under the ministry understates its
+      // autonomy. Revisit if a network-regulation dossier is ever activated.
+      //
+      // OPEN ITEM, deliberately recorded rather than silently dropped: the
+      // Bund-Länder coordination bodies — Energieministerkonferenz,
+      // Umweltministerkonferenz, Ministerpräsidentenkonferenz — are OUT of the
+      // registry by the same decision. They have no EU counterpart and are where
+      // several Bund-Länder energy bargains are actually struck. Not an oversight.
+      // ---------------------------------------------------------------------
+      bundesregierung: {
+        mandate: { id: 'breg-merz-1', label: 'Merz I', since: '2025-05-06', coalition: ['CDU/CSU', 'SPD'], verified: false },
+        supersedeTrigger: "A change in the Chancellor's party, or a new coalition — same logic as §137 at Member State level.",
+        ministries: [
+          { id: 'de-bkamt', abbr: 'BKAmt', name: 'Bundeskanzleramt',                                                                 relevance: 'Coordination, and the final word where BMWE and BMUKN disagree. Abteilung 4 (Wirtschaft, Finanzen, Energie) is the working-level entry point.', minister: null, party: null, verified: false },
+          { id: 'de-bmwe',  abbr: 'BMWE',  name: 'Bundesministerium für Wirtschaft und Energie',                                      relevance: 'Lead on EnWG, EEG, Kraftwerkssicherheit, grids, Industriestrompreis. Primary counterpart for E.ON.', minister: 'Katherina Reiche', party: 'CDU', verified: true, verifiedVia: 'Already carried in the ETS1 dossier on primary sources.' },
+          { id: 'de-bmukn', abbr: 'BMUKN', name: 'Bundesministerium für Umwelt, Klimaschutz, Naturschutz und nukleare Sicherheit',    relevance: 'Lead on EU ETS, Klimaschutzgesetz, BEHG/nEHS. Holds the formal ETS file federally.', minister: 'Carsten Schneider', party: 'SPD', verified: true, verifiedVia: 'Already carried in the ETS1 dossier on primary sources (BMUKN Nr. 095/26, 18 Jul 2026).' },
+          { id: 'de-bmf',   abbr: 'BMF',   name: 'Bundesministerium der Finanzen',                                                    relevance: 'KTF, Strompreiskompensation funding, Stromsteuer. All EU ETS auction revenue enters the KTF, so BMF holds the money the ETS revenue debate is about.', minister: null, party: null, verified: false },
+          { id: 'de-bmwsb', abbr: 'BMWSB', name: 'Bundesministerium für Wohnen, Stadtentwicklung und Bauwesen',                       relevance: 'GEG and kommunale Wärmeplanung — the buildings half of ETS2 exposure, directly relevant to E.ON heat.', minister: null, party: null, verified: false },
+          { id: 'de-bmv',   abbr: 'BMV',   name: 'Bundesministerium für Verkehr',                                                     relevance: 'Road transport half of ETS2, charging infrastructure.', minister: null, party: null, verified: false }
+        ],
+        agencies: [
+          { id: 'de-bnetza', abbr: 'BNetzA', name: 'Bundesnetzagentur', parentId: 'de-bmwe', type: 'subordinate authority',
+            relevance: 'Netzentgelte, Netzentwicklungsplan, Ausschreibungen — decisions that hit E.ON\'s regulated asset base directly, and are taken here rather than in the legislature.',
+            autonomyNote: 'Functionally independent of BMWE on regulatory decisions. Filed under the ministry by Jonas\'s decision of 13 Aug 2026; the placement understates its autonomy and should be revisited if a network-regulation dossier is activated.' },
+          { id: 'de-dehst',  abbr: 'DEHSt', name: 'Deutsche Emissionshandelsstelle im Umweltbundesamt', parentId: 'de-bmukn', type: 'subordinate authority',
+            relevance: 'German ETS implementation and the source of the national allocation and revenue figures the ETS1 dossier already cites. Data source more than political actor.' }
+        ]
+      },
+
+      note: 'DE Policy realm: stakeholder STRUCTURE built 13 Aug 2026, positions deliberately empty. No DE dossier is active — de-dossier-a/b remain placeholders. Next steps, in order: (1) verify the 16 Land governments and coalitions against bundesrat.de; (2) harvest the 630-member Bundestag roster via Chrome and agree the coalition-adjusted weights; (3) choose a first dossier, which then fixes the law type and with it the Bundesrat weight multiplier.'
     },
     defaultDossierId: 'de-dossier-a',
     dossierIds: ['de-dossier-a', 'de-dossier-b']
