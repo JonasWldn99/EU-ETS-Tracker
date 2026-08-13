@@ -867,7 +867,40 @@
     0%, 55% { background: rgba(232,230,225,0.13); box-shadow: 0 0 0 6px rgba(232,230,225,0.06); }
     100%    { background: transparent; box-shadow: none; }
   }
-  @media (max-width: 1100px) { .tl-wrap { display: none; } }
+  /* Below the house 1100px breakpoint the strip PANS, it is not removed (§201).
+     Until 13 Aug 2026 this rule was `.tl-wrap { display: none; }`, which made the
+     Zeitstrahl invisible on every phone, every tablet and every half-width desktop
+     window. That reused the tool's standard collapse breakpoint but inverted its
+     meaning: everywhere else 1100px reflows and loses nothing (§130), here alone it
+     deleted the whole object with no trace — the §172 locality failure exactly.
+     A horizontal scroll container is the only narrow-screen treatment compatible with
+     §194's strict-linearity assertion: each chip's left:% must equal its true position
+     on the axis, so .tl-linear keeps a DEFINITE width (percentages need a resolved
+     containing block) and the viewport moves instead of the geometry. A reflow or a
+     stacked mobile variant would break that assertion and duplicate the renderer. */
+  @media (max-width: 1100px) {
+    .tl-wrap { padding: 18px 16px 10px; }
+    .tl-body {
+      overflow-x: auto; overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      padding-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .tl-body::-webkit-scrollbar { height: 6px; }
+    .tl-body::-webkit-scrollbar-track { background: transparent; }
+    .tl-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* Definite width, not min-width: the chips are positioned by percentage. */
+    .tl-linear { flex: 0 0 860px; width: 860px; min-width: 860px; }
+    .tl-endcap { flex: 0 0 156px; }
+    .tl-wrap::after {
+      content: "Swipe the strip sideways to see the full period";
+      display: block; margin-top: 8px;
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.04em;
+      color: var(--text-tertiary); font-style: italic;
+    }
+  }
 
   .milestone-cols { display: grid; grid-template-columns: 3fr 3fr 3fr 2.2fr; gap: 12px; margin-bottom: 4px; }
   @media (max-width: 900px) { .milestone-cols { grid-template-columns: 1fr; } }
