@@ -490,6 +490,21 @@
   .cd-cell-inner.cd-neutral { background: rgba(139,147,163,0.12); border: 1.5px solid rgba(139,147,163,0.4); }
   .cd-cell-inner.cd-pending { background: rgba(255,255,255,0.02); border: 1px dashed var(--border); }
   .cd-cell-inner.cd-interim { background: rgba(212,163,71,0.08); border: 1px dashed rgba(212,163,71,0.45); }
+
+  /* Document dropdown (§331). A cell can now carry several documents from the same institution —
+     ENVI's draft report, an ITRE opinion, a Council mandate — with the highest-precedence one shown
+     by default. The selector is deliberately quiet: it is navigation, not data. */
+  .cd-doc-bar { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; flex-wrap: wrap; }
+  .cd-doc-select { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.03em; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px; cursor: pointer; max-width: 100%; }
+  .cd-doc-select:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+  .cd-doc-count { font-family: var(--font-mono); font-size: 8.5px; color: var(--text-tertiary); letter-spacing: 0.05em; }
+  .cd-doc-committee { font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+  /* An opinion binds nothing (Rule 58), so it is the WEAK case and therefore the MARKED one (§172):
+     dashed at 2px like every other thin-evidence frame in this tool (§163), and faded. Never bold. */
+  .cd-cell-inner.cd-opinion { border-style: dashed !important; border-width: 2px !important; opacity: 0.84; }
+  .cd-opinion-note { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); font-style: italic; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .cd-superseded { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); margin-top: 6px; }
+  .cd-procedural-note { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 10.5px; color: var(--text-tertiary); }
   .cd-status-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
   .cd-badge { font-family: var(--font-mono); font-size: 8.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
   .cd-badge.cd-support { background: rgba(127,176,105,0.22); color: var(--support); }
@@ -4192,7 +4207,75 @@ function ltCommissionCellHTML(col, expandKey) {
   </div>`;
 }
 
+// §331 — DOCUMENT PRECEDENCE. A position column may carry several documents at once; this decides
+// which one is shown by default. Higher wins; ties break on the later date. The ladder was agreed
+// with Jonas on 27 September 2026 and the principle is that the DEFAULT is the most authoritative
+// text that exists, not the newest one — a draft opinion published after a plenary vote does not
+// displace the plenary vote.
+const LT_DOC_RANK = {
+  // European Parliament
+  plenary:          100,  // adopted first-reading position (T10-…)
+  committeeReport:   80,  // lead committee's adopted report (A10-…)
+  draftReport:       60,  // lead committee's draft report (PE …/PR)
+  amendments:        50,  // amendments tabled in the lead committee (PE …/AM)
+  opinion:           30,  // an opinion committee's ADOPTED opinion (PE …/AD)
+  draftOpinion:      20,  // an opinion committee's draft opinion (PE …/PA)
+  // Council
+  generalApproach:  100,
+  mandate:           90,  // Coreper-agreed negotiating mandate, published (ST … outcome of proceedings)
+  compromise:        70,  // Presidency compromise text, published (ST … to Delegations)
+  compromiseLeaked:  60,  // Presidency compromise obtained but not published (WK …)
+  delegationComments:40,  // compiled comments from delegations (WK … ADD)
+  steeringNote:      20   // Presidency steering note / call for comments
+};
+// Kinds that are an OPINION rather than a position of the institution. Rendered as the weak case (§172).
+const LT_OPINION_KINDS = { opinion: true, draftOpinion: true };
+
+function ltDocRank(doc) {
+  const base = LT_DOC_RANK[doc && doc.kind] || 0;
+  return base;
+}
+// Sort a document list into display order: authority first, then recency.
+function ltSortDocs(docs) {
+  return (docs || []).slice().sort((a, b) => {
+    const r = ltDocRank(b) - ltDocRank(a);
+    if (r !== 0) return r;
+    return String(b.date || '').localeCompare(String(a.date || ''));
+  });
+}
+// Which document is showing: the user's pick if they made one and it still exists, else the top of
+// the ladder. Kept in its own state object rather than in expandState so a re-render never confuses
+// "this cell is expanded" with "this cell is showing document 2".
+let docSelectState = {};
+function ltSelectDoc(key, docId) {
+  docSelectState[key] = docId;
+  renderLegislativeView();
+}
+function ltDocLabel(doc) {
+  const bits = [];
+  if (doc.committee) bits.push(doc.committee);
+  if (doc.label) bits.push(doc.label);
+  const head = bits.join(' — ') || (doc.docId || 'Document');
+  const tail = [doc.date, doc.fileRef].filter(Boolean).join(' · ');
+  return tail ? `${head} · ${tail}` : head;
+}
+function ltDocBarHTML(docs, selected, key) {
+  if (!docs || docs.length < 2) return '';
+  const opts = docs.map(doc => {
+    const sel = doc.docId === selected.docId ? ' selected' : '';
+    return `<option value="${doc.docId}"${sel}>${ltDocLabel(doc)}</option>`;
+  }).join('');
+  return `<div class="cd-doc-bar">
+    <select class="cd-doc-select" onchange="ltSelectDoc('${key}', this.value)">${opts}</select>
+    <span class="cd-doc-count">${docs.length} documents</span>
+  </div>`;
+}
+
 function ltPositionCellHTML(col, expandKey) {
+  // A column may now carry a ranked `documents` array (§331). The legacy single-object shape still
+  // renders unchanged, so a topic nobody has touched behaves exactly as before.
+  const docs = col && Array.isArray(col.documents) && col.documents.length ? ltSortDocs(col.documents) : null;
+  if (docs) return ltDocumentsCellHTML(col, docs, expandKey);
   if (!col || col.status !== 'confirmed') {
     const proceduralHTML = col && col.procedural ? `<div class="cd-cell-note">${col.procedural}</div>` : '';
     return `<div class="cd-cell-inner cd-pending">
@@ -4207,6 +4290,42 @@ function ltPositionCellHTML(col, expandKey) {
     <div class="cd-cell-text">${col.text || ''}</div>
     ${sourceHTML}
     ${legalTextExpandHTML(col.legalText, expandKey)}
+  </div>`;
+}
+
+// Renders a position column that carries one or more documents. The default is the top of the
+// precedence ladder; the dropdown appears only when there is actually a choice to make.
+function ltDocumentsCellHTML(col, docs, expandKey) {
+  const picked = docSelectState[expandKey];
+  const doc = (picked && docs.find(x => x.docId === picked)) || docs[0];
+  const isOpinion = !!LT_OPINION_KINDS[doc.kind];
+  const cls = doc.alignment || 'neutral';
+  const barHTML = ltDocBarHTML(docs, doc, expandKey);
+  const committeeHTML = doc.committee ? `<span class="cd-doc-committee">${doc.committee}${doc.role === 'opinion' ? ' · opinion' : ''}</span>` : '';
+  const sourceHTML = doc.source
+    ? `<div class="cd-cell-source">${doc.url ? `<a href="${doc.url}" target="_blank" rel="noopener">${doc.source}</a>` : doc.source}${doc.date ? ' · ' + doc.date : ''}</div>`
+    : '';
+  // An opinion is addressed to the lead committee and binds nothing (Rule 58). Say so on the cell
+  // rather than relying on the reader to know it, and mark the cell as the weak case (§172).
+  const opinionNoteHTML = isOpinion
+    ? `<div class="cd-opinion-note">Committee opinion — addressed to the lead committee, not a position of Parliament.</div>`
+    : '';
+  // When the shown document is not the newest in the column, say which one it outranks, so the
+  // default never looks like an oversight.
+  const newer = docs.filter(x => String(x.date || '') > String(doc.date || ''));
+  const supersededHTML = newer.length
+    ? `<div class="cd-superseded">Outranks ${newer.length} more recent document${newer.length > 1 ? 's' : ''} in this column — select above.</div>`
+    : '';
+  const badgeLabel = isOpinion ? 'Opinion' : (doc.badge || 'Confirmed');
+  return `<div class="cd-cell-inner cd-${cls}${isOpinion ? ' cd-opinion' : ''}">
+    ${barHTML}
+    <div class="cd-status-row"><span class="cd-badge cd-${cls}">${badgeLabel}</span>${committeeHTML}</div>
+    <div class="cd-cell-text">${doc.text || ''}</div>
+    ${sourceHTML}
+    ${opinionNoteHTML}
+    ${supersededHTML}
+    ${legalTextExpandHTML(doc.legalText, expandKey + '-' + doc.docId)}
+    ${col.procedural ? `<div class="cd-cell-note cd-procedural-note">${col.procedural}</div>` : ''}
   </div>`;
 }
 
@@ -4858,7 +4977,7 @@ DOSSIERS = {
   "id": "ets1",
   "title": "ETS1 Stakeholder Map",
   "subtitle": "E.ON POLITICAL AFFAIRS — EU ETS1 REVIEW · COM(2026) 616/619 (tabled 17 Jul 2026) — Council/EP positions due by end-2026",
-  "lastUpdated": "2026-09-25",
+  "lastUpdated": "2026-09-27",
   "reactions": {
     "institutional": [
       {
@@ -5707,8 +5826,8 @@ DOSSIERS = {
     {
       "id": "mwi",
       "code": "MWI",
-      "label": "Full ETS1 integration of municipal waste incineration",
-      "eonPosition": "Fully integrate municipal waste incineration into ETS1, complemented by safeguards against landfill diversion and increased third-country waste exports.",
+      "label": "Full ETS1 integration of municipal waste incineration — and of landfills in parallel",
+      "eonPosition": "Integrate municipal waste incineration into ETS1 from 2031 and **delete the temporary national opt-out in Art. 12b entirely**. Integrate **non-hazardous landfills in parallel from 2031**, under an **ex-ante surrender model** based on the **projected lifecycle methane generation of waste at the point of deposition** — with the Commission required to finalise BAT standards and a comprehensive Union **landfill registry by 31 July 2029** and to run a mandatory **MRV-only testing phase in 2029-2030** to calibrate country- and landfill-specific methane formation factors.",
       "eonGrade": "+",
       "pillar": "Scope & Coverage",
       "tier": 1,
@@ -5725,7 +5844,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -5734,7 +5853,26 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 72 deletes Article 12b in its entirety — the temporary national opt-out for waste incineration and co-incineration.** That is E.ON's ask on this limb, word for word: the September amendment paper asks that Amendment (23) “be adjusted to fully delete the temporary national opt-out option in Art. 12b”. The rapporteur position recorded on 28 August — that Liese was “considering removing them from his draft report entirely” because “we need an EU-wide system” — is now a numbered amendment.\n\n**On the second limb, landfills, the draft report is silent.** E.ON asks for non-hazardous landfills to enter the surrender obligation in parallel from 2031 under an ex-ante lifecycle-methane model. Liese tables nothing on it, and silence is not opposition (§169) — but nor is it support. The amendment deadline of 6 October is when that gap either closes or does not.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendment 72 — Article 1(23) of the proposal, inserting Art. 12b into Directive 2003/87/EC",
+                "text": "Article 12b (Opt-out for waste incineration and co-incineration), as proposed by the Commission: “deleted”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -5748,7 +5886,8 @@ DOSSIERS = {
           "tabledBy": null,
           "legalText": null
         }
-      }
+      },
+      "eonRationale": "**Widened on 27 September 2026 on Jonas's instruction: the landfill ask is not a separate topic but the other half of this one.** E.ON's position is that pricing incineration while leaving landfills unpriced is not a partial measure but a counterproductive one — the two are “two sides of the same coin”.\n\n**On the opt-out.** The four-year phase-in of MWI surrender obligations across 2031-2034, on top of several years of technical preparation, is already a substantial concession to those worried about a sharp rise in compliance costs and local social impacts. A further national opt-out running to 2035 would create a loophole capable of perpetuating an uneven playing field for **nearly a decade**, depressing disposal costs in opting-out jurisdictions and drawing waste towards them. E.ON's drafting deletes Art. 12b's substance wholesale.\n\n**On landfills, and why command-and-control is judged insufficient.** Enforcement of existing waste law is not holding: **15 Member States**, representing **71% of the municipal waste landfilled in the EU**, are failing to fully enforce pre-treatment obligations, and **13 remain off track** for the 10% landfill target for 2035 (Umweltbundesamt (2026), ‘Including landfills in the EU ETS’, pp. 31f). Against that, the ETS is a reliable compliance mechanism — the Commission reports on-time compliance **above 99%** (2025 Carbon Market Report, p. 40). Untreated municipal waste and sorting residues contain significant biodegradable organic fractions, so diverting them to landfill generates diffuse methane, a greenhouse gas many times more potent than CO₂; the diversion risk could erase the climate benefit of pricing incineration and leave the change **negative overall**.\n\n**Why ex-ante rather than measured emissions.** Liability arising at the point of deposition, on projected lifecycle methane, gives an immediate steering signal against landfilling biodegradable organics — which is where the methane comes from — rather than a signal delayed by the decades over which the gas is actually released. It also sidesteps the measurement problem the Commission itself flags: because current landfill methane data is uncalibrated and national methods diverge, E.ON's drafting does **not** insert static cap-increase figures into the Directive but requires the Commission to calculate and publish them **by 31 December 2030** from the verified data gathered in the 2029-2030 MRV testing phase.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "mwthreshold",
@@ -5846,7 +5985,7 @@ DOSSIERS = {
       "id": "beccs",
       "code": "BECCS",
       "label": "BECCS / permanent carbon removals integration from 2031",
-      "eonPosition": "Integrate BECCS and other permanent carbon removals into the ETS1 framework from 2031.",
+      "eonPosition": "Integrate BECCS and other permanent removals from 2031 with a clear **1:1 legal link** between the **250 million additional allowances** brought under the cap and the **250 Mt of permanent removals** procured. Secure delivery through **long-term purchase agreements** giving revenue and volume certainty, with payment on delivery of certified units; and require the Commission to **mobilise complementary Union funding — including through the Industrial Decarbonisation Bank — where auction revenues fall short** of procuring the full 250 Mt.",
       "eonGrade": "++",
       "pillar": "Price & Market Stability",
       "tier": 1,
@@ -5863,7 +6002,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -5872,7 +6011,43 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 32 brings forward the auctioning that funds permanent removals from 2031 to 2029** — two years earlier than the Commission. **Amendment 35** inserts a new Art. 9c(4a) requiring the Commission to adopt, by 31 December 2028, a delegated act establishing additional technical criteria and “enforceable long-term monitoring, reporting, verification, **permanence and liability** requirements, including for **reversals**”.\n\nThat second point is integrity-tightening and runs with E.ON's ask: E.ON's concern is that 250 million allowances are added to the cap on the promise of 250 Mt of removals, so the removals have to be real and permanent or the cap has been loosened for nothing. **Liese does not table the funding backstop E.ON asks for** — complementary Union funding where auction revenues fall short.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 32-37 — Article 1(13) of the proposal, inserting Art. 9c into Directive 2003/87/EC",
+                "text": "AM 32, Art. 9c(1): allowances “made available to the Commission to auction them from 2029 to 2040” (Commission: “from 2031 to 2040”).\n\nAM 35, new Art. 9c(4a): “By 31 December 2028, the Commission shall adopt a delegated act in accordance with Article 23 to supplement this Directive by establishing additional technical criteria and enforceable long-term monitoring, reporting, verification, permanence and liability requirements, including for reversals…”."
+              }
+            },
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 19 goes a year further than Liese: auctioning for removals from 2028**, against Liese's 2029 and the Commission's 2031. **Amendment 21** adds that where revenues are insufficient to buy the full volume, **additional allowances** may be made available — which is close to, though not the same as, E.ON's ask for complementary Union funding through the Industrial Decarbonisation Bank.\n\n**Amendment 22 cuts the other way and should not be read as loosening:** unused allowances are **“cancelled”** rather than “returned to the Union-wide quantity”, so leftovers are destroyed instead of recycled into the cap. Amendments 1 and 3 name DACCS and BioCCS explicitly in the recitals and open the door to a limited number of **biochar** credits.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 19-23 — Article 1(13) of the proposal, inserting Art. 9c into Directive 2003/87/EC",
+                "text": "AM 19, Art. 9c(1): allowances “made available to the Commission to auction them from 2028 to 2040” (Commission: “from 2031 to 2040”).\n\nAM 21, new Art. 9c(2a): “In the event the revenues generated from the allowances under paragraph 1 would be insufficient for the purchase of the total amount of domestic permanent carbon removal units, additional allowances…”.\n\nAM 22, Art. 9c(3): unused allowances are “cancelled” (Commission: “returned to the Union-wide quantity of allowances referred to in Article 9 of this Directive”)."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -5886,13 +6061,14 @@ DOSSIERS = {
           "tabledBy": null,
           "legalText": null
         }
-      }
+      },
+      "eonRationale": "**Rewritten 27 September 2026 from E.ON's September amendment paper.** The integrity argument is the load-bearing one: 250 million allowances are added to the cap on the premise that 250 Mt of permanent removals will be bought with the proceeds. **If the removals are not procured, the allowances have been added for nothing** — hence the demand for an explicit 1:1 legal link rather than a best-efforts procurement.\n\n**The financing gap is the mechanism by which that could fail.** Procurement is funded from auctioning the 250 million allowances plus a reserve of 10 million; if the cost of removals exceeds the market price of the corresponding allowances, the volume cannot be bought. E.ON's drafting therefore adds an explicit obligation on the Commission to mobilise complementary Union funding, naming the IDB, where revenues under Art. 9c(1) and (2) are insufficient.\n\n**Long-term purchase agreements are the bankability ask.** Capital-intensive CDR projects need contracted revenue and volume to reach final investment decision; the paper keeps **payment upon certified delivery** so environmental integrity is not traded away for bankability, while allowing future volumes to be contracted early enough to unlock the investment.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "art29a",
       "code": "ART29A",
       "label": "Strengthen Art. 29a price containment",
-      "eonPosition": "Lower the Article 29a trigger so the mechanism can actually fire: reduce the multiple in the first subparagraph of Art. 29a(1) from 2.4 to around 1.5 (E.ON working figure, preliminary as at 12 Aug 2026). Explicitly NOT a price corridor, cap or floor — the ask is to keep the ETS market-based rather than price-based, while making price containment effective in practice rather than only on paper.",
+      "eonPosition": "Make Article 29a effective. Lower the activation factor in Art. 29a(1) from **2,4 to 1,5** and shorten the observation period from **six months to four months**, leaving the two-year reference period unchanged; and let the 75 million allowance release **decline by 4% annually from 2029**, rounded to the nearest million, so it stays proportionate to a shrinking cap. Explicitly **not** a price corridor, cap or floor, and **no downward intake limb** — the ask keeps the ETS market-based while giving it a safeguard that can actually fire.",
       "eonGrade": "--",
       "pillar": "Price & Market Stability",
       "tier": 1,
@@ -5909,7 +6085,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -5918,7 +6094,26 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 78 replaces Article 29a outright, and it is the most consequential single amendment on this file for E.ON.** The trigger moves from “more than **2,4 times** the average price for the preceding **two-year** period”, measured over **six months**, to “more than **25 % higher** than the average allowance price for the preceding **one-year** reference period”, measured over **three months**. The release falls from **75 million to 25 million**. A **new second subparagraph adds a downward limb**: on a fall of more than 25 %, 25 million allowances **“shall be placed in”** the reserve — Article 29a has never had an intake limb. The cooldown collapses from “at least twelve months” to “at least the month” after the last release or placement. **Amendments 81 and 85** carry the plumbing into Art. 1(7) of the MSR Decision and a new Annex Ia, where the quantity is LRF-adjusted from **23,9 million in 2029 to 17,2 million in 2040** and scaled to the size of the price move.\n\n**Against E.ON's ask, tabled in the September amendment paper as a new point (32a):** factor **1,5** over **four months** against a **two-year** reference, release held at **75 million** declining 4%/yr from 2029, and **no intake limb**. Liese's trigger is far more sensitive than E.ON's; his release is a third the size; and the downward limb is something E.ON explicitly does not ask for.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendment 78 — Article 1(32a) (new) of the proposal, replacing Art. 29a of Directive 2003/87/EC",
+                "text": "Present text: “1. If the average allowance price for the six preceding calendar months is more than 2,4 times the average allowance price for the preceding two-year reference period, 75 million allowances shall be released from the market stability reserve in accordance with Article 1(7) of Decision (EU) 2015/1814.”\n\nLiese: “1. If the average allowance price for the three preceding calendar months is more than 25 % higher than the average allowance price for the preceding one-year reference period, 25 million allowances shall be released from the market stability reserve in accordance with Article 1(7)…”\n\nAM 81, MSR Decision Art. 1(7), second subparagraph: “If the condition in Article 29a(1), second subparagraph… has been met, 25 million allowances shall be deducted from the quantity of allowances to be auctioned by the Member States… and shall be placed in the reserve.”"
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -5933,7 +6128,7 @@ DOSSIERS = {
           "legalText": null
         }
       },
-      "eonRationale": "E.ON's concern is ETS1 price spikes feeding through to wholesale power, because gas will continue to set the wholesale electricity price for a significant share of hours in many Member States well into the 2030s. Excessive carbon-price increases would therefore slow electrification in E.ON's core sectors — buildings and road transport — which is why an ETS1 parameter is an ETS2-sector concern. The objection to the current formula is that at 2.4x it is unlikely ever to be triggered. Source: Jonas Wilden, 12 Aug 2026 (E.ON anchor, recorded directly).  CROSS-FILE — DO NOT READ ACROSS. E.ON eventually accepted and supported the €45 release threshold for ETS2 under Article 30h, because that file is politically far more sensitive: it reaches households and therefore voters. That does NOT extend to ETS1, and it is not an inconsistency — the two systems hit different constituencies and the reasoning differs by design. Equally, E.ON's ETS1 ask for a market-based trigger does not by itself establish that E.ON would oppose a hard €45 ETS1 ceiling if one became politically live: that is a separate decision and is not on the record. Source: Jonas Wilden, 12 Aug 2026."
+      "eonRationale": "E.ON's concern is ETS1 price spikes feeding through to wholesale power, because gas will continue to set the wholesale electricity price for a significant share of hours in many Member States well into the 2030s. Excessive carbon-price increases would therefore slow electrification in E.ON's core sectors — buildings and road transport — which is why an ETS1 parameter is an ETS2-sector concern. The objection to the current formula is that at 2.4x it is unlikely ever to be triggered. Source: Jonas Wilden, 12 Aug 2026 (E.ON anchor, recorded directly).  CROSS-FILE — DO NOT READ ACROSS. E.ON eventually accepted and supported the €45 release threshold for ETS2 under Article 30h, because that file is politically far more sensitive: it reaches households and therefore voters. That does NOT extend to ETS1, and it is not an inconsistency — the two systems hit different constituencies and the reasoning differs by design. Equally, E.ON's ETS1 ask for a market-based trigger does not by itself establish that E.ON would oppose a hard €45 ETS1 ceiling if one became politically live: that is a separate decision and is not on the record. Source: Jonas Wilden, 12 Aug 2026.\n\n**CONFIRMED AND MADE PRECISE, 27 September 2026 — this supersedes the ‘around 1.5, preliminary’ working figure of 12 August.** E.ON's September 2026 amendment paper tables the change as a new point (32a) amending Art. 29a and states the arithmetic that drives it. The trigger compares the average price over the preceding six months with the average over the two preceding years, so it responds to the *rate* of increase, not the level: **at the current factor of 2,4 the carbon price would have to rise steadily by almost 117% a year for the mechanism to fire**. Against the €150/tCO₂ two-year average underlying the Commission's own 2031-2040 impact assessment (SWD(2026) 616, Annex 12, Table 22), the six-month average would have to exceed **€360/tCO₂** before Art. 29a triggers. At 1,5 over four months the same baseline still permits a four-month average of almost **€225/tCO₂** before any intervention — well above the Commission's own expectation, which is the point: this is a safeguard against extremes, not a price ceiling. The 4%/yr taper on the 75 million release mirrors the Commission's own dynamic MSR thresholds and exists to avoid a disproportionate liquidity shock as the market tightens. The paper grounds the ask in the European Council conclusions of 19 March 2026, which invited the Commission to review the ETS “to reduce the volatility of the carbon price and mitigate its impact on electricity prices” — and notes that Art. 29a **has never activated since its introduction in 2009** and is left untouched by the proposal.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "speculation",
@@ -6002,7 +6197,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6011,7 +6206,43 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendment 28 replaces the linear factor in Art. 9(7): 3,4% for 2031-2035 and 2,3% from 2036**, against the Commission's 3,7% and 1,7%. It loosens the near-term leg and tightens the later one — the Commission front-loads the effort, Liese spreads it. The 28 August rapporteur position recorded below predicted both numbers before the document existed.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendment 28 — Article 1(12)(b) of the proposal, amending Art. 9(7) of Directive 2003/87/EC",
+                "text": "Commission: “The linear factor shall be 3.7% from 2031 to 2035 and 1.7% from 2036.”\n\nLiese: “The linear factor shall be 3,4% from 2031 to 2035 and 2,3% from 2036.”"
+              }
+            },
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendment 15 proposes a third number: 3,2% for 2031-2035 and 2,2% from 2036.** Ratas is 0,2 pp softer than Liese in the first period and 0,1 pp tighter in the second. His stated reason is that industrial-scale hydrogen, CCS/CCUS and electrified high-heat processes are “simply not yet commercially viable or widely accessible today”, so “an overly steep LRF at the start of the decade would penalise companies for lacking technologies that do not yet exist at scale.”\n\n**Two EPP rapporteurs in two committees independently cutting the front leg and raising the back leg is a stronger signal than either number alone.**",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendment 15 — Article 1(12)(b) of the proposal, amending Art. 9(7) of Directive 2003/87/EC",
+                "text": "Commission: “The linear factor shall be 3.7% from 2031 to 2035 and 1.7% from 2036.”\n\nRatas: “The linear factor shall be 3,2% from 2031 to 2035 and 2,2% from 2036.”"
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -6057,7 +6288,40 @@ DOSSIERS = {
           "articleRef": "Art. 1(5a) and Art. 5 of Decision (EU) 2015/1814",
           "amendmentNumber": "PE791.122, AMs 1-48",
           "tabledBy": "Multiple (S&D, The Left, Renew, Greens/EFA, ECR/PfE, ESN) — see procedural note",
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "T10-0278/2026",
+              "label": "Plenary, first reading (partial)",
+              "committee": "Plenary",
+              "role": "lead",
+              "kind": "plenary",
+              "date": "2026-09-15",
+              "fileRef": "2026/0085(COD) — the MSR-invalidation file",
+              "alignment": "neutral",
+              "text": "**Plenary adopted amendments on 15 September 2026 (P10_TA(2026)0278) and referred the file back for negotiations** — not a first-reading position. Parliament refused the Commission's approach and kept automatic invalidation. **Amendment 8, a new Article 1a, replaces Art. 1(5a) of Decision (EU) 2015/1814: the 400 million threshold runs “from 2023 until 31 January 2027” and “[f]rom 1 February 2027, allowances held in the reserve above 650 million allowances shall no longer be valid.”** Under §180 the operative verb is ‘shall no longer be valid’ — binding. **This is one month earlier than the ENVI report** (A10-0230/2026, adopted 10 September, 43-21-6), whose Amendment 6 used 28 February / 1 March 2027 and does not appear in the adopted text; **and the recital was not aligned — Amendment 4 still says “as of 1 March 2027”.** Recitals create no obligations, so the binding date is 1 February. Amendment 5 deletes the Commission's operative paragraph outright. The outcome is materially closer to Emma Wiesner's tabled 400m→600m middle path than to the Commission's proposal to end invalidation. The Council's draft mandate, ST 12877/2026, went to Coreper on 16 September and is reported to **defer** invalidation instead; a permanent higher threshold and a timing deferral are different instruments and are tracked separately here.",
+              "source": "P10_TA(2026)0278, adopted text on the MSR-invalidation file (2026/0085(COD)), European Parliament, 15 September 2026",
+              "url": "https://www.europarl.europa.eu/doceo/document/TA-10-2026-0278_EN.html",
+              "legalText": null
+            },
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendments 79 to 83 and 85 are Liese's entire MSR block, and on the parameters he changes exactly one thing.** AM 79 (intake) and AM 80 (release) each make a single edit: the Commission's flat **“decrease annually by 4%”** becomes **“decrease annually by the linear factor referred to in Article 9 of Directive 2003/87/EC”**. On AM 79 the first 1,049 characters of the two columns are byte-identical — **the 12% intake rate and the 947 million upper buffer are accepted verbatim**, as are the lower buffer and the tapered release. AM 83 retitles the new MSR Annex I to match; AM 85 creates Annex Ia for the Art. 29a quantities.\n\n**He tables nothing on Art. 1(4a)**, so he accepts the widening of the TNAC to cover cumulative aviation 2012-2023 — the change the Commission says cuts the 2027 TNAC by 173 million allowances.\n\n**The single change is larger than it looks.** Liese's own AM 28 sets the linear factor at 3,4% then 2,3%, so indexing the MSR thresholds to it makes them shrink **more slowly than 4% in every year**. Slower-falling upper thresholds delay intake; slower-falling lower thresholds bring releases forward and make them bigger. Both legs loosen relative to the Commission.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 79-83, 85 — Article 2 of the proposal and its Annex II, amending Decision (EU) 2015/1814",
+                "text": "AM 79, Art. 1(5) first subparagraph: “From 2029, the thresholds of 833 and 947 million under this paragraph shall decrease annually by the linear factor referred to in Article 9 of Directive 2003/87/EC…” (Commission: “by 4%, rounded to the nearest million, as specified in the Annex”).\n\nAM 80, Art. 1(6) second subparagraph: the 400 million and 300 million thresholds and the 100 million release quantity “shall decrease annually by the linear factor referred to in Article 9 of Directive 2003/87/EC…”.\n\nAM 83, MSR Annex I subtitle: “Dynamic MSR parameters decreasing annually according to the linear factor referred to in Article 9 of Directive 2003/87/EC to the first million” (Commission: “decreasing at a yearly rate of 4% per year”)."
+              }
+            }
+          ]
         },
         "council": {
           "status": "confirmed",
@@ -6080,7 +6344,7 @@ DOSSIERS = {
       "id": "freealloc",
       "code": "FREEALLOC",
       "label": "Free allocation rework: phase-out pace, leakage-risk tiering, and investment conditionality",
-      "eonPosition": "Slow the free-allocation phase-out with a tiered approach differentiated by each sector's carbon-leakage risk; any investment-linked conditionality attached to free allocation should be proportionate and not penalise sectors with structurally longer decarbonisation timelines.",
+      "eonPosition": "Welcome the slower phase-out — lower linear reduction factor, slower CBAM-related phase-out, revised maximum annual benchmark reduction rate. **Keep investment conditionality but make it workable; do not delete it.** Exempt installations feeding an **efficient district heating and cooling system under Art. 26 of the Energy Efficiency Directive**; permit **network-wide pooling** for DHCS and **site-based pooling** across interconnected industrial processes **including those outside ETS1** (e.g. below 20 MWth); and require the implementing rules to accommodate **rental, leasing and contracting** models. Separately, make useful heat and process steam **exported from waste-to-energy plants** to carbon-leakage-exposed installations eligible for free allocation under the heat benchmark from 2031.",
       "eonGrade": "+-",
       "pillar": "Industry Competitiveness & Free Allocation",
       "tier": 2,
@@ -6097,7 +6361,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6106,7 +6370,43 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Liese keeps investment conditionality and makes it survivable — he does not delete it.** Nine amendments rework Art. 10a: the exemption widens from the Commission's **10% most efficient** installations to the **40% most efficient** (AM 52); the conditions phase in, reaching only **33% of free allocation in 2031** (AM 53); operators get up to **four extra years** to submit the Invest in EU decarbonisation plan (AM 49); and installations already below the average of the 10% most efficient in 2026-2027 receive **10% more free allocation** (AM 48).\n\n**AM 50 is the one to read twice.** A new Art. 10a(3ba) obliges the Union institutions and the Member States to “take the necessary measures to facilitate the transition of installations, including by **timely making available the necessary electricity grid infrastructure, carbon capture and storage infrastructure and low-carbon hydrogen**”, with an annual Commission progress report on establishing “those enabling conditions”. The enabling-conditions argument — industry's since 17 July, five governments' since 24 September — is now in the lead committee's operative text, and every deliverable it names is an energy-sector one.\n\n**AM 46 sets the CBAM factor at 70% in 2030, 58% in 2031 and 40% in 2032** (Commission: 59 / 48 / 37,5) and **AM 47** requires the Commission to adopt KPIs measuring CBAM effectiveness by 1 January 2028.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 46-56 — Article 1(15) of the proposal, amending Art. 10a of Directive 2003/87/EC",
+                "text": "AM 50, new Art. 10a(3ba): “The Union’s institutions and the Member States shall take the necessary measures to facilitate the transition of installations, including by timely making available the necessary electricity grid infrastructure, carbon capture and storage infrastructure and low-carbon hydrogen. The Commission shall report annually to the European Parliament and to the Council on progress in establishing those enabling conditions.”\n\nAM 52, new Art. 10a(3c) sixth subparagraph a: the conditionality requirements “shall not apply to installations for which all of the following conditions are fulfilled: (a) the installation belongs to 40 % most efficient installations in a sector or subsector in the Union…”\n\nAM 48, new Art. 10a(2a): “For installations whose greenhouse gas emission levels are below the average of the 10 % most efficient installations… the amount of free allocation… shall be increased by 10 %.”\n\nAM 49, Art. 10a(3b) third subparagraph: operators “may submit the Invest in EU decarbonisation plan after the relevant dates… but not later than four years from those dates”."
+              }
+            },
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Ratas removes the conditionality machinery outright.** Amendment 28 deletes Art. 10a(3a) to (3e), and Amendments 5 to 9 delete recitals 44, 45, 46, 47 and 48 to match, with Amendments 4 and 11 removing the surviving cross-references. In his own words the opinion proposes “removing strict conditionality rules for the phase-out of free allocation (the ‘80/20’ provision), **maintaining only a targeted anti-relocation rule**” — companies that relocate outside the EU must repay the allowances. So the clawback survives; the investment-plan apparatus does not.\n\n**On CBAM he lands on exactly the same three numbers as Liese: 70% in 2030, 58% in 2031, 40% in 2032** (AM 26). **AM 27** adds a new Art. 10a(1aa): the Commission **“shall assess”**, per sector, by 30 November 2028 and every two years thereafter, whether CBAM together with the phase-out still protects — and on his account, if the KPIs show the phase-out is impairing EU production or export competitiveness, “the phase-out must be immediately paused or reversed”.\n\n**AM 10** adds to recital 49 that efficient installations “should also receive an additional 10% of free allocation to reward those early decarbonisation efforts” — Liese's AM 48 in recital form.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 4-11, 26-29 — Article 1(15) of the proposal, amending Art. 10a of Directive 2003/87/EC",
+                "text": "AM 28, Article 1(15)(d) — Art. 10a paragraphs 3a to 3e: “deleted”.\n\nAM 27, new Art. 10a(1aa): “By 30 November 2028, and every two years thereafter, the Commission shall assess, for each sector or subsector listed in Annex I to Regulation (EU) 2023/956, whether the carbon border adjustment mechanism established by that Regulation, together with the phase-out of free allocation set out in paragraph 1a of this Article, continues to provide effective…”\n\nAM 26, Art. 10a(1a) second subparagraph — CBAM factor: Commission “59% in 2030, 48% in 2031, 37,5…” becomes “70% in 2030, 58% in 2031, 40…”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "confirmed",
@@ -6124,7 +6424,8 @@ DOSSIERS = {
             "note": "READ ON THE OPERATIVE VERBS (§180). What binds is the redirection and the rate rule: ‘shall be used’ in the new sixth subparagraph of Art. 10a(1), ‘shall be reduced’ in 2a, ‘shall not take into account’ in 2c. WHAT DOES NOT BIND IS THE NUMBER: 43.0 and 38.7 allowances/TJ appear only in recital (2), are labelled ‘indicative’ twice in the same sentence, and appear nowhere in the enacting terms. The Article obliges the Commission to set a rate that exhausts both pots; the two values are the Council's own arithmetic of what that produces.\n\nDIFF AGAINST THE COMMISSION, BOTH DIRECTIONS (COM(2026) 619 final of 17 July 2026, read side by side). ADDED by the Council: Art. 1(0) amending the sixth subparagraph of Art. 10a(1); the clause ‘and of the allowances referred to in the sixth subparagraph of Article 10a(1)’ in 2a; new paragraph 2c; new recital (5a); and the whole quantified passage in recital (2). UNCHANGED: the 2027 phase-in at ‘40% of the adjustment’ (2a, second subparagraph); the oil and gas carve-out in 2b, NACE 0610, 0620, 1920 and 4950; the no-CSCF-trigger safeguard (recital 4); and entry into force on the third day after publication. DELETED: nothing.\n\nTHE QUANTUM. The Commission drew on one pot, the allowances left available by the cross-sectoral correction factor, put at ‘around 80 million’ in July. The Council text and the Council's press release both say ‘around 88 million’; the CSCF Decision setting the factor at 100% was adopted on 23 July 2026, after the proposal, so the 80→88 movement most plausibly tracks the Decision rather than a negotiated concession — stated as a reading, not established. The Council then ADDS a second pot of around 33 million, taking the total to roughly 121 million, about 38% more than the Commission proposed.\n\nWHAT THE 33 MILLION ACTUALLY ARE, AND WHY IT MATTERS BEYOND THE ARITHMETIC. They are allowances forfeited under the free-allocation conditionality of Art. 10a(1) third and fifth subparagraphs — the Council's own press release calls them allowances ‘that had not been previously allocated due to installations not meeting existing ETS conditionalities’. The mandate redirects that forfeiture pot back into free allocation for the same fallback-benchmark population, and new 2c stops the enlarged benchmark from feeding back into a larger 20% cut. Taken together the two provisions weaken the financial consequence of failing conditionality. No delegation is named as the author of either.\n\nTHE DISTRICT-HEATING READ-ACROSS. Art. 10b(4) starts the district-heating carve-out at 30% of the heat benchmark value in 2030 and glides it to 0% in 2040 — so the 2030 value this file sets is the anchor of the whole path. At Implementing Regulation (EU) 2026/1412's 31.2 allowances/TJ the carve-out opens at 9.4; at the Council's indicative 43.0 it opens at 12.9, about 38% higher and roughly 91% of the 14.2 implied by the 2021-2025 heat benchmark of 47.3. The 2027 update carries only 40% of the adjustment, so the full effect arrives from 2028.\n\n€6 billion is a Commission estimate quoted in a Council press release, and it attaches to the 88 million allowances only; the added 33 million is not monetised anywhere on the record."
           }
         }
-      }
+      },
+      "eonRationale": "**Rewritten 27 September 2026 from E.ON's September amendment paper, and the distinction matters politically.** E.ON does **not** ask for conditionality to be deleted. The paper accepts that the expectation for operators receiving free allocation to invest in decarbonising their EU assets is “politically understandable”, and argues instead that investment decisions depend on viable business cases — above all competitive power prices — and that if conditionality is maintained it should “avoid unnecessary bureaucracy” with an ‘investment’ definition flexible enough to work.\n\n**That places E.ON in the middle of three positions now on the record on the same Article** (§196 — a comparison of recorded positions, not a derivation): Jüri Ratas's ITRE draft opinion deletes Art. 10a(3a)-(3e) outright; the five-country Central European paper of 24 September would condition carbon-leakage protection on enabling conditions; **E.ON asks for tiering by carbon-leakage risk plus workable pooling.** Same direction, three different mechanisms.\n\n**Why installation-level boundaries fail for E.ON's business specifically.** Installations feeding an efficient DHCS are already bound to strict EU-mandated transition pathways under Art. 26 EED, so an ‘Invest in EU Decarbonisation Plan’ on top is administrative duplication. Where a plan is still required, network-wide pooling should let investments in the network itself and in non-ETS technologies — large-scale heat pumps, solar thermal — count. The same logic applies to energy services at industrial sites: where CO₂ falls more cheaply through process optimisation (better pipe insulation, heat recovery reducing steam demand), the customer should not first have to invest in large generation assets operated by a service provider. The proposal already allows pooling across several ETS1 installations but **does not appear to cover non-ETS1 industrial processes**, e.g. those below 20 MWth, in carbon-leakage sectors. Making the implementing rules business-model-neutral on rental, leasing and contracting is what keeps third-party-financed energy services on a level playing field.\n\n**The waste-heat limb is a consequence of the MWI decision.** The historical reason for excluding waste-derived heat from free allocation rested solely on the sector facing no ETS carbon price (Free Allocation Regulation, recital 2). Once municipal waste incineration enters ETS1 that justification lapses, and without equivalent eligibility the carbon cost creates an incentive to disconnect from efficient waste-heat networks and revert to on-site fossil combustion.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "cbamexport",
@@ -6147,7 +6448,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6156,7 +6457,26 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 13 inserts a new recital 58b** pointing at Art. 30(5) and Art. 30(6)(a)(i) of the CBAM Regulation, which require the Commission to assess whether Union goods **exported** to third countries without a carbon price are adequately protected. **Amendment 12**, a new recital 58a, frames CBAM and the Temporary Decarbonisation Fund as “recently introduced and untested instruments”.\n\n**Both are recitals and neither creates an obligation (§180).** They are the drafting hook for an operative export solution rather than the solution itself, and the ITRE justification names the export gap as one of the opinion's pillars. Liese's draft report tables nothing on exports; his recorded position of 28 August is that he is less critical of the Commission's export approach than before but has severe WTO-compatibility concerns.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 12-13 — recitals 58a and 58b (new)",
+                "text": "AM 13, new recital (58b): “Article 30(5) and Article 30(6), point (a)(i), of Regulation (EU) 2023/956 require the Commission to assess whether Union goods exported to third countries without a c…”.\n\nAM 12, new recital (58a): “Since the carbon border adjustment mechanism established by Regulation (EU) 2023/956 (‘CBAM’) and the Temporary Decarbonisation Fund are recently introduced and untested instr…”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -6222,7 +6542,7 @@ DOSSIERS = {
       "id": "modfund",
       "code": "MODFUND",
       "label": "Maintain Modernisation Fund for grid oversizing",
-      "eonPosition": "Maintain the Modernisation Fund to support grid oversizing and anticipatory investment.",
+      "eonPosition": "Welcome the Modernisation Fund's continuation beyond 2030 and the increase of the priority-spending mandate from 80% to **95%** — but fix the drafting. **Art. 10(1) must be replaced in its entirety**, not only its first two subparagraphs, so the new **Phase V resources (2031-2040)** and the 10% solidarity redistribution fall inside the 95% mandate under Art. 10d(2). Make **grid digitalisation and smart metering** explicitly eligible under Art. 10d(2), and add grid connections for renewables.",
       "eonGrade": "+",
       "pillar": "Revenue & Funding",
       "tier": 1,
@@ -6239,7 +6559,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6248,7 +6568,26 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendments 31 and 32 reach the Modernisation Fund through Art. 10f.** The general ‘do no significant harm’ obligation on Fund revenues is deleted and replaced with a narrowed, self-contained version that caps the compliance burden and presumes compliance for projects outside the EIA regime.\n\n**E.ON's own Modernisation Fund asks are not tabled by anyone yet** — neither the full replacement of Art. 10(1) that would bring the Phase V resources and the solidarity share inside the 95% priority mandate, nor the explicit eligibility of grid digitalisation and smart metering under Art. 10d(2). That drafting defect remains unaddressed in both Parliament documents.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 31-32 — Article 1(20) of the proposal, amending Art. 10f of Directive 2003/87/EC",
+                "text": "AM 31, Art. 10f(1) — the requirement that Modernisation Fund, Innovation Fund and Industrial Decarbonisation Bank revenues “be used in line with the principle of ‘do no significant harm’ referred to in Article 33(2), point (d) of Regulation (EU, Euratom) 2024/2509”: “deleted”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -6262,13 +6601,14 @@ DOSSIERS = {
           "tabledBy": null,
           "legalText": null
         }
-      }
+      },
+      "eonRationale": "**Rewritten 27 September 2026 from E.ON's September amendment paper.** The Fund is a working instrument, not a hypothetical one: by mid-2025 it was supporting investments across **12 beneficiary Member States**, with **€18.9 billion disbursed** and a further **€23.7 billion** indicatively earmarked, and the Commission's own evaluation finds that **around 70% of supported investments would likely not have gone ahead without it** (SWD(2026) 198 final, pp. 19 and 52). Unlike general auction revenues, Fund money is subject to ex-ante verification and EIB review.\n\n**The drafting defect is the whole point of the ask and it is easy to miss.** The proposed Art. 10d(2) mandates that 95% of revenues go to priority investments — but only for allowances **explicitly listed in the third subparagraph of Art. 10(1)**, which the Commission's amendment does not touch. As drafted, the new Phase V endowment and the solidarity volumes therefore sit **outside** the 95% mandate. A full replacement of Art. 10(1) consolidates all Fund endowments — the Phase IV 2% and 2.5% shares, the new 2.5% Phase V share and the mandatory solidarity volumes — into a single legal trigger for ringfencing, while retaining the existing wording for 2021-2030 so ongoing programmes are unaffected. **This is a technical fix with a large number behind it, and nobody else has tabled it.**\n\nWhy grids: the Commission's impact assessment records that renewables deployment “did not reach its full potential” in several Member States partly because of outdated infrastructure (IA Part 1/5, p. 31); Romania's high-voltage distribution lines average **47 years old** (SWD(2026) 198 final, p. 56). The Fund is the instrument for replacing ageing assets and pre-building capacity before the constraints already visible in Germany, the Netherlands and Spain bite elsewhere.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "idb",
       "code": "IDB",
       "label": "Industrial Decarbonisation Bank: prioritise competitive electrification projects",
-      "eonPosition": "Use the Industrial Decarbonisation Bank to organise EU-wide auctions favouring the most competitive domestic projects — particularly low- and medium-temperature-heat electrification — including dedicated funding for one-off grid connection costs.",
+      "eonPosition": "Focus the Industrial Decarbonisation Bank on the most cost-effective options — large-scale **electrification of low- and medium-temperature industrial heat** — leaving innovative pilots to the Innovation Fund. Keep **grid connection costs eligible** for support but **exclude them from the evaluation and ranking of bids**. Give permanent carbon removal projects **dedicated bidding windows or differentiated award criteria** rather than making them compete head-on with cheaper electrification, and let the IDB act as the **funding backstop** for removals procurement.",
       "eonGrade": "+",
       "pillar": "Revenue & Funding",
       "tier": 1,
@@ -6285,7 +6625,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6294,7 +6634,43 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendment 58 reserves a share of the Industrial Decarbonisation Bank's first-phase allowances for CBAM sectors**, sized to their share of verified 2027 emissions, “in particular, to address the remaining risk of carbon leakage in third country markets”. **This pulls against E.ON's ask rather than with it.** E.ON wants the Bank pointed at the most cost-effective option — large-scale electrification of low- and medium-temperature industrial heat — with innovative pilots left to the Innovation Fund. A carve-out for CBAM sectors is an allocation rule by sector, not by cost-effectiveness.\n\n**Neither of E.ON's two specific IDB asks is tabled here**: grid connection costs eligible but excluded from bid ranking, and dedicated bidding windows for permanent removals. Amendment 59 also amends Art. 10cc(6); its content was not read in full and nothing is asserted about it.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 58-59 — Article 1(17) of the proposal, inserting Art. 10cc into Directive 2003/87/EC",
+                "text": "AM 58, new Art. 10cc(1) subparagraph 3a: “A share of allowances referred to in the first subparagraph shall be reserved for projects involving the sectors covered by Regulation (EU) 2023/956 corresponding to their share of verified emissions under the system in 2027, in particular, to address the remaining risk of carbon leakage in third country markets.”"
+              }
+            },
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendments 31 and 32 narrow the ‘do no significant harm’ requirement on Modernisation Fund, Innovation Fund and Industrial Decarbonisation Bank revenues.** The general obligation in Art. 10f(1) is deleted and replaced by a self-contained version: the principle applies only “as set out in this Article”, **“No monitoring, verification or reporting obligation specific to the principles beyond that set out in this Article shall apply”**, and projects not subject to an environmental impact assessment under Directive 2011/92/EU or 92/43/EEC are **presumed compliant**.\n\nRead on the verbs (§180) this is not an abolition but a **cap on the compliance burden plus a rebuttable presumption** — a material simplification for fund applicants. E.ON's paper takes no position on DNSH, so this is recorded rather than scored against the ask.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 31-32 — Article 1(20) of the proposal, amending Art. 10f of Directive 2003/87/EC",
+                "text": "AM 31, Art. 10f(1): “deleted”.\n\nAM 32, new Art. 10f(1a): “…shall be set out in this Article to ensure it is feasible and appropriate for the objectives and activities of these programmes. The principle shall be applied to the programmes as set out in this Article. No monitoring, verification or reporting obligation specific to the principles beyond that set out in this Article shall apply.”\n\nNew Art. 10f(1b): “Projects or investment proposals not subject to an environmental impact assessment pursuant to Directives 2011/92/EU or 92/43/EEC shall be presumed compliant with the p…”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -6308,13 +6684,14 @@ DOSSIERS = {
           "tabledBy": null,
           "legalText": null
         }
-      }
+      },
+      "eonRationale": "**Rewritten 27 September 2026 from E.ON's September amendment paper.** Low- and medium-temperature industrial heat electrification is described as “one of the lowest-hanging fruits in the industrial sector”, and the argument for keeping the IDB pointed at it is that the Innovation Fund already exists for the more innovative pilots.\n\n**The ranking point is the sharp one and it is narrowly drafted.** It is welcome that the Commission includes grid connection costs among eligible CAPEX, since they can be a substantial share of project cost. But letting them into the **ranking** of bids in a competitive auction distorts the level playing field, because connection costs vary with local grid topology and connection regimes — **factors beyond the project developer's control**. So: eligible for funding, excluded from bid evaluation. E.ON's drafting puts this in Art. 10ce(2) as an explicit condition on the Terms and Conditions the Commission must publish.\n\n**On removals.** The proposal already makes waste incineration installations eligible for IDB support. Residual plastic waste will remain unavoidable and CCS is currently the only available technology for the resulting combustion emissions; a waste-to-energy plant with capture also generates negative emissions by storing the biogenic share. Making such projects bid against low- and medium-temperature electrification on cost alone would lose them, which is why the ask is for separate windows rather than a subsidy. Integrated projects capturing both biogenic and fossil CO₂ should stay eligible where they generate certified permanent removals.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "revenue",
       "code": "REVENUE",
       "label": "Effective earmarking of ETS1 revenues for decarbonisation",
-      "eonPosition": "Ensure national ETS1 revenues are effectively allocated to decarbonisation, prioritising sectors bearing the scheme's direct and indirect costs.",
+      "eonPosition": "Keep national auction revenues **fully earmarked**: delete the Commission's ‘at least 50%’ so that **100%** of revenues go to the listed purposes, with **at least 75% of them** supporting the decarbonisation of ETS sectors. **Reject the proposed transfer of 30% of Member States' auction revenues to the EU budget as Own Resources.** Make **grid digitalisation and smart metering** explicitly eligible alongside transmission and distribution networks.",
       "eonGrade": "+-",
       "pillar": "Revenue & Funding",
       "tier": 1,
@@ -6331,7 +6708,7 @@ DOSSIERS = {
           }
         },
         "parliament": {
-          "status": "none",
+          "status": "confirmed",
           "text": null,
           "source": null,
           "date": null,
@@ -6340,7 +6717,43 @@ DOSSIERS = {
           "articleRef": null,
           "amendmentNumber": null,
           "tabledBy": null,
-          "legalText": null
+          "legalText": null,
+          "documents": [
+            {
+              "docId": "PE791.996",
+              "label": "Liese draft report",
+              "committee": "ENVI",
+              "role": "lead",
+              "kind": "draftReport",
+              "date": "2026-09-15",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "neutral",
+              "text": "**Amendment 38 raises the mandatory earmark from “at least 50%” to “at least 75%”** of auction revenues, and extends the carve-out to revenues “established as external assigned revenue”. **AM 39** adds a new eligible purpose: purchasing, issuing and making available **carbon contracts for difference** to ETS operators. **AM 40** adds another: addressing residual carbon-leakage risk in CBAM sectors.\n\n**This is not E.ON's ask, and the difference is a number people will misread.** E.ON's amendment paper deletes the fraction altogether so that **100%** of revenues are earmarked, then requires at least 75% **of that** to go to ETS-sector decarbonisation. Liese's 75% leaves a quarter at Member States' discretion. He has also said on the record (28 August) that 100% ringfencing for ETS sectors is politically unreachable.",
+              "source": "ENVI_PR(2026)791996 — draft report, Peter Liese (EPP, DE), 85 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 38-45 — Article 1(14)(c) of the proposal, amending Art. 10(3) of Directive 2003/87/EC",
+                "text": "AM 38: “…and entered in the Union budget or established as external assigned revenue. Member States shall use at least 75 % of those revenues…” (Commission: “at least 50 %”).\n\nAM 39, new point (ca): “to purchase, issue and make available carbon contracts for difference to operators of installations under this Directive”.\n\nAM 40, new point (cb): “to address any residual risk of carbon leakage in the sectors covered by Annex I to Regulation (EU) 2023/956…”."
+              }
+            },
+            {
+              "docId": "PE792.091",
+              "label": "Ratas draft opinion",
+              "committee": "ITRE",
+              "role": "opinion",
+              "kind": "draftOpinion",
+              "date": "2026-09-18",
+              "fileRef": "2026/0212(COD)",
+              "alignment": "support",
+              "text": "**Amendment 24 raises the earmark from 50% to 75%** — the identical figure Liese proposes, tabled independently in the other committee.\n\n**Amendment 25 is the one that matters most directly to E.ON.** It adds a new point (ka) to the eligible-use list: measures to reduce emissions in buildings by improving energy efficiency, **district heating systems** and insulation, to support efficient and renewable heating and cooling, and to support deep and staged deep renovation under Directive (EU) 2024/1275. District heating enters the earmarked-revenue list in the industry committee's opinion.",
+              "source": "ITRE_PA(2026)792091 — draft opinion for ENVI, Jüri Ratas (EPP, EE), 33 amendments",
+              "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+              "legalText": {
+                "articleRef": "Amendments 24-25 — Article 1(14)(c) of the proposal, amending Art. 10(3) of Directive 2003/87/EC",
+                "text": "AM 24: “Member States shall use at least 75 % of those revenues…” (Commission: “at least 50 %”).\n\nAM 25, new point (ka): “measures intended to reduce emissions in buildings, by improving energy efficiency, district heating systems and insulation, to support efficient and renewable heating and cooling systems, or to support the deep and staged deep renovation of buildings in accordance with Directive 2024/1275 of the European Parliament and of the Council…”."
+              }
+            }
+          ]
         },
         "council": {
           "status": "none",
@@ -6354,7 +6767,8 @@ DOSSIERS = {
           "tabledBy": null,
           "legalText": null
         }
-      }
+      },
+      "eonRationale": "**Rewritten 27 September 2026 from E.ON's September amendment paper, superseding the June position paper on this topic.** Member States have been legally required since June 2023 to use **100%** of ETS revenues for climate and energy purposes. The Commission proposes to make only **50%** subject to mandatory spending on the newly defined priority areas, leaving the remainder at Member States' discretion and potentially available for unrelated budgetary purposes. On top of that, under the proposed Multiannual Financial Framework **30% of auction revenues would be transferred to the EU budget as Own Resources**, shrinking the national pool to which the 50% would then apply. The Commission justifies that transfer by the need to finance the repayment of NextGenerationEU “without undue cuts to EU programmes or excessive increase in GNI contributions” (COM(2025) 574 final, p. 1) — so ETS revenues would de facto service EU debt.\n\n**Note the precision, because it is easily blurred.** E.ON's 75% is **not** the 75% that Peter Liese and Jüri Ratas propose. Their amendments raise the Commission's earmark from 50% to 75%, leaving 25% free. E.ON's drafting deletes the fraction entirely so that **all** revenue is earmarked, and then requires at least three quarters of it to go to ETS-sector decarbonisation specifically. **E.ON's ask is therefore more demanding than either rapporteur's**, and reading the two 75%s as the same number would understate the gap.\n\nWhat is welcome: the Commission recognises the eligibility of distribution grids, given their role in integrating renewables and electrifying industrial demand. What is missing: investments in the **digitalisation of existing assets**, which improve grid efficiency and utilisation and should be explicitly recognised, consistent with the Electrification Action Plan and the proposed Regulation on network charges.\n\n**Source: E.ON, ‘ETS Amendment Proposals’, September 2026 — E.ON's amendment-level position on COM(2026) 616, the ETS Directive review. Supersedes the general position paper of 15 June 2026 on every topic it reaches.**"
     },
     {
       "id": "frontload",
@@ -7053,7 +7467,48 @@ DOSSIERS = {
         "role": "Not yet individually assessed.",
         "weight": 1,
         "parentId": "estonia-epp-delegation",
-        "stances": {},
+        "stances": {
+          "lrf": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ITRE_PA(2026)792091 of 18 September 2026 — Jüri Ratas's draft opinion for ENVI on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+            "note": "**First scoring for Jüri Ratas (EPP, EE), ITRE rapporteur for opinion on the review since 9 September 2026.** Amendment 15: “The linear factor shall be 3,2% from 2031 to 2035 and 2,2% from 2036”, against the Commission's 3,7% and 1,7%. His stated reason is that industrial-scale hydrogen, CCS/CCUS and electrified high-heat processes are “simply not yet commercially viable or widely accessible today”, so “an overly steep LRF at the start of the decade would penalise companies for lacking technologies that do not yet exist at scale”. **Intensity 3 — congruent.** E.ON's ask is a lower LRF aligned to the 2050 climate-neutrality trajectory rather than the current pace, and a two-stage 3,2/2,2 is that ask in numbers. Confidence 3: his own tabled, numbered amendment in his own committee document. **Worth noting against Liese's 3,4/2,3: two EPP rapporteurs in two committees independently cut the front leg and raise the back leg.**",
+            "intensity": 3
+          },
+          "freealloc": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ITRE_PA(2026)792091 of 18 September 2026 — Jüri Ratas's draft opinion for ENVI on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+            "note": "**First scoring.** Amendment 28 deletes Art. 10a(3a) to (3e) outright and Amendments 5-9 delete recitals 44-48 to match. In his own words the opinion removes “strict conditionality rules for the phase-out of free allocation (the ‘80/20’ provision), **maintaining only a targeted anti-relocation rule**” — the clawback on relocation survives, the investment-plan apparatus does not. Amendment 26 sets the CBAM factor at **70% in 2030, 58% in 2031 and 40% in 2032** (Commission: 59 / 48 / 37,5) and Amendment 27 adds a biennial per-sector CBAM effectiveness assessment from 30 November 2028, which on his account must **pause or reverse** the phase-out if the indicators show it impairing EU production or export competitiveness.\n\n**Intensity 2, and the reason is mechanism rather than direction.** E.ON's paper explicitly does **not** ask for conditionality to be deleted — it accepts that the reinvestment expectation is “politically understandable” and asks instead for a DHCS exemption under Art. 26 EED, network-wide and site-based pooling including non-ETS1 processes, and rules that accommodate rental, leasing and contracting models. Ratas's deletion would deliver the relief without any of the machinery E.ON wants built. **Three positions now sit on this Article and E.ON's is the middle one** — Ratas deletes, the five-country Central European paper of 24 September conditions on enabling conditions, E.ON tiers by carbon-leakage risk (§196: comparing recorded positions, not deriving one from another).",
+            "intensity": 2
+          },
+          "revenue": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ITRE_PA(2026)792091 of 18 September 2026 — Jüri Ratas's draft opinion for ENVI on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+            "note": "**First scoring.** Amendment 24 raises the mandatory earmark from 50% to **75%** — the same figure Liese proposes, tabled independently in the other committee. **Amendment 25 is the congruent part for E.ON**: a new point (ka) adds to the eligible-use list measures to reduce building emissions through energy efficiency, **district heating systems** and insulation, efficient and renewable heating and cooling, and deep and staged deep renovation under Directive (EU) 2024/1275.\n\n**Intensity 2** because E.ON's ask is now **100%** earmarking with at least 75% of that going to ETS-sector decarbonisation, so 75-with-25-free is the same direction at a lower level. Nothing here addresses E.ON's other two limbs: rejecting the transfer of 30% of auction revenues to the EU budget as Own Resources, and making grid digitalisation and smart metering explicitly eligible.",
+            "intensity": 2
+          },
+          "beccs": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ITRE_PA(2026)792091 of 18 September 2026 — Jüri Ratas's draft opinion for ENVI on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+            "note": "**First scoring.** Amendment 19 brings the auctioning that funds permanent removals forward to **2028** — a year earlier than Liese's 2029 and three years earlier than the Commission's 2031. Amendment 21 provides that where revenues are insufficient to buy the full volume, **additional allowances** may be made available, which is adjacent to E.ON's ask for a funding backstop without being it: E.ON asks for complementary **Union funding**, including through the Industrial Decarbonisation Bank, rather than more allowances. Amendments 1 and 3 name DACCS and BioCCS in the recitals and open the door to a limited number of **biochar** credits.\n\n**Intensity 2. Note the one element that cuts the other way and should not be read as loosening:** Amendment 22 makes unused allowances **“cancelled”** rather than “returned to the Union-wide quantity”, so leftovers are destroyed instead of recycled into the cap. Nothing here establishes the **1:1 legal link** between the 250 million allowances and the 250 Mt of removals that is the core of E.ON's ask.",
+            "intensity": 2
+          },
+          "cbamexport": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ITRE_PA(2026)792091 of 18 September 2026 — Jüri Ratas's draft opinion for ENVI on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+            "note": "**First scoring, and the intensity is the point.** The ITRE justification names “CBAM KPIs and Export Solution” as one of the opinion's pillars, and **Amendment 13** inserts a new recital 58b pointing at Art. 30(5) and Art. 30(6)(a)(i) of the CBAM Regulation, which require the Commission to assess whether Union goods **exported** to third countries without a carbon price are adequately protected. Amendment 12 frames CBAM and the Temporary Decarbonisation Fund as “recently introduced and untested instruments”.\n\n**Intensity 1 — nominal.** Both are **recitals**, which create no obligation (§180), and the opinion's operative amendments on this axis are KPIs and a review trigger, not an export mechanism. E.ON's ask is an actual export solution alongside a slower phase-out for CBAM sectors. Direction is unambiguous and confidence is 3, but what has been tabled is a drafting hook rather than the instrument.",
+            "intensity": 1
+          }
+        },
         "sortRank": 3
       },
       {
@@ -7585,14 +8040,14 @@ DOSSIERS = {
             "intensity": 3,
             "confidence": 3,
             "source": "direct",
-            "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) welcomed the Commission's 3.7%/1.7% LRF path as \"fully compatible\" with the 2040 target and 2050 neutrality — softer than the CDU/CSU's 3.4% ask but same direction; confidence upgraded to reflect his own on-the-record confirmation as rapporteur. Sharpened in a 24 Jul Contexte interview: wants the 3.7%/2031–35 leg loosened further and the 1.7%/2036+ leg tightened — “a bit too high in the first five years and a bit too low in the second part” — a shape-shift (front-load flexibility, back-load ambition) rather than a simple across-the-board ask; stance/intensity held at support/3 since the underlying direction (lower LRF than status quo) is unchanged. Confirmed and quantified first-hand at Liese's third public ETS stakeholder webinar, 28 August 2026: he wants an LRF of 3.4% for the first half of the 2030s against the Commission's 3.7%, and says the Commission's 1.7% for the second half is too low. This is the same shape-shift recorded from the 24 Jul Contexte interview, now with the first-leg number attached and stated by the rapporteur himself. Held at support/3 and deliberately NOT scored MIXED: E.ON's ask is a lower LRF aligned to 2050 neutrality, and back-loading ambition is the mechanism that keeps a lower near-term LRF consistent with that, so the two legs are complementary rather than offsetting (§166).\n\nCONFIRMED IN TABLED TEXT, 21 September 2026. Amendment 28 of draft report ENVI_PR(2026)791996 of 15 September replaces Art. 9(7): 'The linear factor shall be 3,4% from 2031 to 2035 and 2,3% from 2036', against the Commission's 3.7% and 1.7%. The 3.4% figure he gave verbally on 28 August is now the operative number, and the second leg is quantified for the first time at 2.3%. The tracker's own arithmetic on the reported figures is therefore vindicated on the primary text: 5×3.7 + 5×1.7 = 27.0 points of base against 5×3.4 + 5×2.3 = 28.5, so the draft ends the decade with a LOWER cap than the Commission's — flatter, not weaker. Note the same shape appears on the maritime file, where he extends the shipping derogations to 2040 but requires them to be 'carefully phased-out' (§311): longer runway, harder end-date, twice by the same rapporteur. Score held at support/3/3."
+            "note": "CDU/CSU note (Jun 2026): explicit ask for LRF reduction to 3.4% (acceptable range 3.0–3.8%), conditional on staying consistent with EU 2050 climate neutrality. Strong, specific, aligned with E.ON. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) welcomed the Commission's 3.7%/1.7% LRF path as \"fully compatible\" with the 2040 target and 2050 neutrality — softer than the CDU/CSU's 3.4% ask but same direction; confidence upgraded to reflect his own on-the-record confirmation as rapporteur. Sharpened in a 24 Jul Contexte interview: wants the 3.7%/2031–35 leg loosened further and the 1.7%/2036+ leg tightened — “a bit too high in the first five years and a bit too low in the second part” — a shape-shift (front-load flexibility, back-load ambition) rather than a simple across-the-board ask; stance/intensity held at support/3 since the underlying direction (lower LRF than status quo) is unchanged. Confirmed and quantified first-hand at Liese's third public ETS stakeholder webinar, 28 August 2026: he wants an LRF of 3.4% for the first half of the 2030s against the Commission's 3.7%, and says the Commission's 1.7% for the second half is too low. This is the same shape-shift recorded from the 24 Jul Contexte interview, now with the first-leg number attached and stated by the rapporteur himself. Held at support/3 and deliberately NOT scored MIXED: E.ON's ask is a lower LRF aligned to 2050 neutrality, and back-loading ambition is the mechanism that keeps a lower near-term LRF consistent with that, so the two legs are complementary rather than offsetting (§166).\n\nCONFIRMED IN TABLED TEXT, 21 September 2026. Amendment 28 of draft report ENVI_PR(2026)791996 of 15 September replaces Art. 9(7): 'The linear factor shall be 3,4% from 2031 to 2035 and 2,3% from 2036', against the Commission's 3.7% and 1.7%. The 3.4% figure he gave verbally on 28 August is now the operative number, and the second leg is quantified for the first time at 2.3%. The tracker's own arithmetic on the reported figures is therefore vindicated on the primary text: 5×3.7 + 5×1.7 = 27.0 points of base against 5×3.4 + 5×2.3 = 28.5, so the draft ends the decade with a LOWER cap than the Commission's — flatter, not weaker. Note the same shape appears on the maritime file, where he extends the shipping derogations to 2040 but requires them to be 'carefully phased-out' (§311): longer runway, harder end-date, twice by the same rapporteur. Score held at support/3/3.\n\n**CONFIRMED ON PRIMARY TEXT, 27 September 2026 — no score change, and the evidence class is the finding.** This row rested on reported rapporteur positions of 28 August 2026 (Liese wanting 3.4% for the first half of the 2030s and regarding the Commission's 1.7% as too low). **Amendment 28 of the draft report now states exactly that**: “The linear factor shall be 3,4% from 2031 to 2035 and 2,3% from 2036.” Direction, intensity and confidence all unchanged; what changed is that a reported position became a numbered amendment, which matters if this row is ever challenged under §177. Source: ENVI_PR(2026)791996 of 15 September 2026 — Peter Liese's draft report on COM(2026) 616, read in full via the DOCX route."
           },
           "freealloc": {
             "stance": "support",
-            "intensity": 3,
+            "intensity": 2,
             "confidence": 3,
             "source": "direct",
-            "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) backs the conditionality approach in principle, provided \"frontrunners\" who have already invested aren't penalised, and industry isn't allowed to \"sit back and do nothing\" — same direction, more conditional framing than the pre-proposal CDU/CSU ask; confidence upgraded on his own confirmation as rapporteur. Sharpened in the 24 Jul Contexte interview: wants investment conditionality tied to the specific site that received the free allocation, pushing back on the Commission’s proposed company-level/pooled-allowance flexibility — “investment in the site should be rewarded more than investment somewhere else,” though he concedes “some flexibility is necessary.” Webinar, 28 August 2026: Liese repeats that \"investment conditionalities will come\" (Investitionsauflagen werden kommen) but says he has listened to industry and is open to adjustment. Specifically, conditionality could at first attach only to the ADDITIONAL free allocation the proposal creates — which the Commission estimates at +47% against the status quo — leaving the pre-existing allocation unconditioned, at least initially from 2031. A material softening in E.ON's direction on proportionality, and the first quantified landing zone anyone has put on the record. CHALLENGE LOGGED AND DECLINED, 7 September 2026 (§177): a dts-Nachrichtenagentur wire of 4 September 2026, 06:28 CEST, carrying a Handelsblatt interview, has Liese saying he is considering “nur die Zertifikate mit der Konditionalisierung zu verbinden, die durch die Revision zusätzlich zur Verfügung gestellt werden” (linking the conditionality only to those allowances that the revision makes additionally available), from 2031. This is the SAME position the tracker recorded first-hand from his 28 August webinar, now with a direct quotation and an explicit start date attached. It CONFIRMS rather than contradicts; stance, intensity and confidence are unchanged at support/3/3. Recorded here because §177 requires a challenge to be logged even when declined, and because a later run meeting the 4 September wire in isolation would otherwise be at risk of reporting it as a new development (§182)."
+            "note": "CDU/CSU note: demands significantly more free certificates via revised (lower) benchmarks and a higher free-allocation share; also wants continued free allocation for installations investing in climate-neutral production. Strongly aligned, arguably more aggressive than E.ON's ask. Confirmed post-proposal: Liese/EPP press release (17 Jul 2026) backs the conditionality approach in principle, provided \"frontrunners\" who have already invested aren't penalised, and industry isn't allowed to \"sit back and do nothing\" — same direction, more conditional framing than the pre-proposal CDU/CSU ask; confidence upgraded on his own confirmation as rapporteur. Sharpened in the 24 Jul Contexte interview: wants investment conditionality tied to the specific site that received the free allocation, pushing back on the Commission’s proposed company-level/pooled-allowance flexibility — “investment in the site should be rewarded more than investment somewhere else,” though he concedes “some flexibility is necessary.” Webinar, 28 August 2026: Liese repeats that \"investment conditionalities will come\" (Investitionsauflagen werden kommen) but says he has listened to industry and is open to adjustment. Specifically, conditionality could at first attach only to the ADDITIONAL free allocation the proposal creates — which the Commission estimates at +47% against the status quo — leaving the pre-existing allocation unconditioned, at least initially from 2031. A material softening in E.ON's direction on proportionality, and the first quantified landing zone anyone has put on the record. CHALLENGE LOGGED AND DECLINED, 7 September 2026 (§177): a dts-Nachrichtenagentur wire of 4 September 2026, 06:28 CEST, carrying a Handelsblatt interview, has Liese saying he is considering “nur die Zertifikate mit der Konditionalisierung zu verbinden, die durch die Revision zusätzlich zur Verfügung gestellt werden” (linking the conditionality only to those allowances that the revision makes additionally available), from 2031. This is the SAME position the tracker recorded first-hand from his 28 August webinar, now with a direct quotation and an explicit start date attached. It CONFIRMS rather than contradicts; stance, intensity and confidence are unchanged at support/3/3. Recorded here because §177 requires a challenge to be logged even when declined, and because a later run meeting the 4 September wire in isolation would otherwise be at risk of reporting it as a new development (§182).\n\n**RE-SCORED 27 September 2026 — and the actor did not move, the ASK did (§166/§177).** E.ON's September 2026 amendment paper supersedes the June position paper on this topic and states the ask far more precisely than the text this row was originally scored against. Intensity measures the distance between the actor's stated position and E.ON's ask, so a sharper ask can change the distance without the actor saying anything new. **This is recorded explicitly because it would otherwise look like a downgrade of the actor, which it is not.** Confidence is untouched and the direction is unchanged. Liese keeps conditionality and makes it survivable — exemption widened from the 10% to the **40% most efficient** installations (AM 52), conditions phased in from **33% of free allocation in 2031** (AM 53), up to **four extra years** to submit the plan (AM 49), and **+10% free allocation** for installations already below the 10%-most-efficient average (AM 48). He also inserts a new Art. 10a(3ba) obliging the Union and the Member States to make electricity grid, CO2 and low-carbon hydrogen infrastructure available in time, with an annual progress report (AM 50). **But none of E.ON's three specific asks is tabled**: no exemption for installations feeding an efficient district heating and cooling system under Art. 26 EED, no network-wide or site-based pooling across non-ETS1 processes, and nothing on rental, leasing and contracting neutrality. Same objective, none of the same levers — intensity 2."
           },
           "speculation": {
             "stance": "support",
@@ -7617,18 +8072,18 @@ DOSSIERS = {
           },
           "revenue": {
             "stance": "support",
-            "intensity": 3,
+            "intensity": 2,
             "confidence": 3,
             "source": "direct",
-            "note": "New position set out in the 24 Jul Contexte interview (primary): wants the Commission’s 50%-to-ETS-sectors revenue-earmarking rule sub-targeted so at least 20–30% of that share is reserved specifically for hard-to-abate industries (steel, chemical, cement, lime), arguing broad electrification spending doesn’t help industries needing hydrogen/CCS infrastructure. Says he expects a hard trilogue fight and claims a Parliament-Commission-industry-NGO “united front” for more targeted spending. Aligned in direction with E.ON’s REVENUE ask (effective earmarking for decarbonisation), though the specific 20–30% sub-target is his own idea, not yet a formal amendment. Webinar, 28 August 2026, confirming and sharpening the 24 Jul position first-hand. Liese calls national finance ministers the biggest problem: ringfencing is 100% on paper but some Member States do not comply at all, and the gap he identifies is that no deadline exists by which revenues — or an equivalent financial value — must be spent on energy and climate purposes, so a government can say it will invest \"in 3, 4 or 5 years\" (he named Italy). He wants the Commission's time component made stricter. He concedes 100% ringfencing for ETS sectors is politically unreachable, and calls the proposed 50% mandatory earmarking too broad because \"anything related to electricity\" would count — he named EV purchase programmes and heat pumps — which he says would not help energy-intensive industries. He therefore wants a sub-quota reserved for energy-intensive industry. INTENSITY HELD AT 2 on Jonas's own read (28 Aug): the electricity-versus-EII framing is unhelpful to E.ON rather than adverse, and does not widen the distance to E.ON's ask enough to move the score.\n\nUPGRADED intensity 2 → 3 on 21 September 2026 on the strength of his own tabled text, draft report ENVI_PR(2026)791996 of 15 September. What was an interview idea is now numbered amendments to Art. 10(3). Amendment 38 raises the binding earmark from the Commission's 'at least 50%' to 'at least 75%' of auction revenues (net of own resources and of Art. 10a(6) indirect-cost compensation) for the decarbonisation of ETS sectors, justified as '100% of the ETS revenues stem from the ETS sectors'. Amendment 43 then converts the Commission's permissive second subparagraph — 'Member States MAY use the remainder' — into 'Member States SHALL use the remainder' on a purpose list, so on the operative verbs there is no unbound residue left at all (§180: the may→shall conversion is the change, not the percentage). Amendment 42 adds a binding sub-earmark inside the 75%: the financial value equivalent to the gap between verified emissions and free allocation for the carbon-leakage sectors of Commission Delegated Decision (EU) 2019/708 must go to a named subset of purposes. Amendment 40 adds a CBAM-sector carbon-leakage purpose and Amendment 39 adds carbon contracts for difference to the permitted uses. Taken together this is the mechanism E.ON's ask describes — revenues effectively allocated to decarbonisation, prioritising the sectors bearing the scheme's costs — so intensity 3 rather than 2. Confidence stays 3."
+            "note": "New position set out in the 24 Jul Contexte interview (primary): wants the Commission’s 50%-to-ETS-sectors revenue-earmarking rule sub-targeted so at least 20–30% of that share is reserved specifically for hard-to-abate industries (steel, chemical, cement, lime), arguing broad electrification spending doesn’t help industries needing hydrogen/CCS infrastructure. Says he expects a hard trilogue fight and claims a Parliament-Commission-industry-NGO “united front” for more targeted spending. Aligned in direction with E.ON’s REVENUE ask (effective earmarking for decarbonisation), though the specific 20–30% sub-target is his own idea, not yet a formal amendment. Webinar, 28 August 2026, confirming and sharpening the 24 Jul position first-hand. Liese calls national finance ministers the biggest problem: ringfencing is 100% on paper but some Member States do not comply at all, and the gap he identifies is that no deadline exists by which revenues — or an equivalent financial value — must be spent on energy and climate purposes, so a government can say it will invest \"in 3, 4 or 5 years\" (he named Italy). He wants the Commission's time component made stricter. He concedes 100% ringfencing for ETS sectors is politically unreachable, and calls the proposed 50% mandatory earmarking too broad because \"anything related to electricity\" would count — he named EV purchase programmes and heat pumps — which he says would not help energy-intensive industries. He therefore wants a sub-quota reserved for energy-intensive industry. INTENSITY HELD AT 2 on Jonas's own read (28 Aug): the electricity-versus-EII framing is unhelpful to E.ON rather than adverse, and does not widen the distance to E.ON's ask enough to move the score.\n\nUPGRADED intensity 2 → 3 on 21 September 2026 on the strength of his own tabled text, draft report ENVI_PR(2026)791996 of 15 September. What was an interview idea is now numbered amendments to Art. 10(3). Amendment 38 raises the binding earmark from the Commission's 'at least 50%' to 'at least 75%' of auction revenues (net of own resources and of Art. 10a(6) indirect-cost compensation) for the decarbonisation of ETS sectors, justified as '100% of the ETS revenues stem from the ETS sectors'. Amendment 43 then converts the Commission's permissive second subparagraph — 'Member States MAY use the remainder' — into 'Member States SHALL use the remainder' on a purpose list, so on the operative verbs there is no unbound residue left at all (§180: the may→shall conversion is the change, not the percentage). Amendment 42 adds a binding sub-earmark inside the 75%: the financial value equivalent to the gap between verified emissions and free allocation for the carbon-leakage sectors of Commission Delegated Decision (EU) 2019/708 must go to a named subset of purposes. Amendment 40 adds a CBAM-sector carbon-leakage purpose and Amendment 39 adds carbon contracts for difference to the permitted uses. Taken together this is the mechanism E.ON's ask describes — revenues effectively allocated to decarbonisation, prioritising the sectors bearing the scheme's costs — so intensity 3 rather than 2. Confidence stays 3.\n\n**RE-SCORED 27 September 2026 — and the actor did not move, the ASK did (§166/§177).** E.ON's September 2026 amendment paper supersedes the June position paper on this topic and states the ask far more precisely than the text this row was originally scored against. Intensity measures the distance between the actor's stated position and E.ON's ask, so a sharper ask can change the distance without the actor saying anything new. **This is recorded explicitly because it would otherwise look like a downgrade of the actor, which it is not.** Confidence is untouched and the direction is unchanged. Specifically: **Amendment 38 of the draft report raises the mandatory earmark from 50% to 75%**, while E.ON's paper deletes the fraction so that **100%** of revenues are earmarked, with at least 75% of that going to ETS-sector decarbonisation. Liese has also said on the record (28 August 2026) that 100% ringfencing for ETS sectors is politically unreachable, so the gap is stated rather than merely unaddressed. Still clearly the same direction — more earmarking, not less — hence support at intensity 2 rather than a direction change. **Evidence class improved at the same time**: this row previously rested on reported rapporteur positions and now rests on his own numbered amendment (ENVI_PR(2026)791996 of 15 September 2026 — Peter Liese's draft report on COM(2026) 616, read in full via the DOCX route)."
           },
           "mwi": {
             "stance": "support",
-            "intensity": 3,
+            "intensity": 2,
             "confidence": 3,
             "source": "direct",
             "url": "https://www.peter-liese.de/schwerpunkte/emissionshandel/",
-            "note": "New stance, 28 August 2026, from Liese's third public ETS stakeholder webinar, heard first-hand by Jonas. Liese is highly sceptical of the national opt-outs the Commission proposes for municipal waste incineration — \"wir brauchen ein EU-weites System\" (we need an EU-wide system) — and said he is considering scrapping them entirely in his draft report. Congruent with E.ON's ask, which is full ETS1 integration of municipal waste incineration and which likewise opposes the opt-outs, so intensity 3; confidence 3 as the rapporteur's own words at a public event. He also acknowledged the need to prevent waste diversion to landfill, noting Germany is already a frontrunner through its largely comprehensive landfill ban. DG CLIMA confirmed at the same event that the Commission deliberately left landfills out of ETS1 because it judged regulatory measures under the forthcoming Circular Economy Act, due by end-2026, the better and more effective instrument — recorded here rather than as a separately tracked file, per Jonas, 28 August. This is the single most E.ON-favourable thing the rapporteur said, and it is still only \"considering\", which is what makes the next fortnight the window.\n\nCONFIRMED IN TABLED TEXT, 21 September 2026. The 28 August record said he was 'considering' scrapping the opt-outs and that the next fortnight was the window; the window closed in E.ON's favour. Amendment 72 of draft report ENVI_PR(2026)791996 of 15 September DELETES Article 12b, the provision making the municipal-waste-incineration opt-out available to 31 December 2035 for Member States meeting two of three conditions. His justification: the gradual phase-in over 2031-2034 already accounts for conditions not being ready in 2028, and 'an additional derogation would however strongly disturb the common market and is therefore deleted'. The explanatory statement puts it as 'All Member States should be included to the same extent, and the European single market should be preserved.' Score held at support/3/3 — already at the ceiling on both axes; what changed is that the evidence moved from a spoken intention to a numbered amendment, which matters for §177 if anyone later challenges the row."
+            "note": "New stance, 28 August 2026, from Liese's third public ETS stakeholder webinar, heard first-hand by Jonas. Liese is highly sceptical of the national opt-outs the Commission proposes for municipal waste incineration — \"wir brauchen ein EU-weites System\" (we need an EU-wide system) — and said he is considering scrapping them entirely in his draft report. Congruent with E.ON's ask, which is full ETS1 integration of municipal waste incineration and which likewise opposes the opt-outs, so intensity 3; confidence 3 as the rapporteur's own words at a public event. He also acknowledged the need to prevent waste diversion to landfill, noting Germany is already a frontrunner through its largely comprehensive landfill ban. DG CLIMA confirmed at the same event that the Commission deliberately left landfills out of ETS1 because it judged regulatory measures under the forthcoming Circular Economy Act, due by end-2026, the better and more effective instrument — recorded here rather than as a separately tracked file, per Jonas, 28 August. This is the single most E.ON-favourable thing the rapporteur said, and it is still only \"considering\", which is what makes the next fortnight the window.\n\nCONFIRMED IN TABLED TEXT, 21 September 2026. The 28 August record said he was 'considering' scrapping the opt-outs and that the next fortnight was the window; the window closed in E.ON's favour. Amendment 72 of draft report ENVI_PR(2026)791996 of 15 September DELETES Article 12b, the provision making the municipal-waste-incineration opt-out available to 31 December 2035 for Member States meeting two of three conditions. His justification: the gradual phase-in over 2031-2034 already accounts for conditions not being ready in 2028, and 'an additional derogation would however strongly disturb the common market and is therefore deleted'. The explanatory statement puts it as 'All Member States should be included to the same extent, and the European single market should be preserved.' Score held at support/3/3 — already at the ceiling on both axes; what changed is that the evidence moved from a spoken intention to a numbered amendment, which matters for §177 if anyone later challenges the row.\n\n**RE-SCORED 27 September 2026 — and the actor did not move, the ASK did (§166/§177).** E.ON's September 2026 amendment paper supersedes the June position paper on this topic and states the ask far more precisely than the text this row was originally scored against. Intensity measures the distance between the actor's stated position and E.ON's ask, so a sharper ask can change the distance without the actor saying anything new. **This is recorded explicitly because it would otherwise look like a downgrade of the actor, which it is not.** Confidence is untouched and the direction is unchanged. **On the first limb Liese matches the ask exactly: Amendment 72 deletes Article 12b in its entirety**, which is what E.ON's paper asks for in those words. **On the second limb he tables nothing.** E.ON's ask now also requires non-hazardous landfills to enter the surrender obligation in parallel from 2031 under an ex-ante lifecycle-methane model, with BAT standards and a Union landfill registry by 31 July 2029 and a mandatory 2029-2030 MRV-only phase. The draft report is silent on all of it. **Silence is not opposition (§169)** and Liese's recorded 28 August remarks were sceptical of opt-outs rather than hostile to landfill inclusion — but one limb of a two-limb ask delivered is partial, not congruent. The 6 October amendment deadline is when that gap closes or does not."
           },
           "cbamexport": {
             "stance": "oppose",
@@ -7644,7 +8099,15 @@ DOSSIERS = {
             "confidence": 3,
             "source": "document",
             "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
-            "note": "New stance, 21 September 2026, from the rapporteur's own tabled text: Amendment 78 of draft report ENVI_PR(2026)791996 of 15 September 2026 replaces Article 29a of Directive 2003/87/EC outright. Read on the operative verbs (§180): the release trigger moves from 'more than 2,4 times the average allowance price for the preceding two-year reference period' over six months to 'more than 25 % higher than the average allowance price for the preceding one-year reference period' over three months, and 25 million allowances 'shall be released' in place of 75 million. A NEW second subparagraph mirrors it downward — on a fall of more than 25 %, 25 million 'shall be placed in' the reserve. Paragraph 2's twelve-month cooldown becomes 'at least the month after the end of the last release from, or of the placement'. From 2029 the quantity is LRF-adjusted and then scaled to the size of the price move, per a new Annex IA to Decision (EU) 2015/1814 (Amendment 85: 23,9m in 2029 falling to 17,2m in 2040). Amendment 81 carries the same changes into Art. 1(7) of the MSR Decision.\n\nSCORED support/2/3, and the call is deliberate. Direction is unambiguous and congruent: E.ON's ask is a trigger low enough that the mechanism can actually fire inside a market-based system, and a +25% threshold over one year is far more sensitive than E.ON's own 2.4 → ~1.5 working figure. Confidence 3 — the rapporteur's own tabled amendment, dated and numbered, which is the strongest evidence class on this dossier. Intensity 2 rather than 3 because the instrument is not the one E.ON asked for: E.ON's recorded position (§189) is explicitly NOT a price corridor, cap or floor, and the symmetric intake limb is a soft floor — it withdraws supply to defend the price on the way down, which raises cost to a buyer and is the element E.ON's own position rules out. So the amendment would deliver the ask AND something E.ON has declined to ask for. That is the textbook definition of partial (§166).\n\nMIXED was considered and declined. §166's MIXED requires that no net direction can be attributed; here a direction plainly can — the whole thrust of Amendment 78 and its recital (91a) is to make Art. 29a 'more sensitive and act more swiftly'. The intake limb is an added element, not a countervailing one on the same question, and scoring MIXED would understate a genuine and significant alignment. This is the §281 case — direction and instrument diverging — and §281 says to say so in the briefing rather than only in a tooltip, which has been done.\n\nDRAFTING NOTE for whoever reads the text next: recital (91a) states that 'the trigger should be available two times in 12 months', while the operative paragraph 2 permits re-triggering after roughly one month. Only the operative text binds (§180); the recital carries no legal force and the two do not describe the same mechanism. Expect this to be raised in committee."
+            "note": "New stance, 21 September 2026, from the rapporteur's own tabled text: Amendment 78 of draft report ENVI_PR(2026)791996 of 15 September 2026 replaces Article 29a of Directive 2003/87/EC outright. Read on the operative verbs (§180): the release trigger moves from 'more than 2,4 times the average allowance price for the preceding two-year reference period' over six months to 'more than 25 % higher than the average allowance price for the preceding one-year reference period' over three months, and 25 million allowances 'shall be released' in place of 75 million. A NEW second subparagraph mirrors it downward — on a fall of more than 25 %, 25 million 'shall be placed in' the reserve. Paragraph 2's twelve-month cooldown becomes 'at least the month after the end of the last release from, or of the placement'. From 2029 the quantity is LRF-adjusted and then scaled to the size of the price move, per a new Annex IA to Decision (EU) 2015/1814 (Amendment 85: 23,9m in 2029 falling to 17,2m in 2040). Amendment 81 carries the same changes into Art. 1(7) of the MSR Decision.\n\nSCORED support/2/3, and the call is deliberate. Direction is unambiguous and congruent: E.ON's ask is a trigger low enough that the mechanism can actually fire inside a market-based system, and a +25% threshold over one year is far more sensitive than E.ON's own 2.4 → ~1.5 working figure. Confidence 3 — the rapporteur's own tabled amendment, dated and numbered, which is the strongest evidence class on this dossier. Intensity 2 rather than 3 because the instrument is not the one E.ON asked for: E.ON's recorded position (§189) is explicitly NOT a price corridor, cap or floor, and the symmetric intake limb is a soft floor — it withdraws supply to defend the price on the way down, which raises cost to a buyer and is the element E.ON's own position rules out. So the amendment would deliver the ask AND something E.ON has declined to ask for. That is the textbook definition of partial (§166).\n\nMIXED was considered and declined. §166's MIXED requires that no net direction can be attributed; here a direction plainly can — the whole thrust of Amendment 78 and its recital (91a) is to make Art. 29a 'more sensitive and act more swiftly'. The intake limb is an added element, not a countervailing one on the same question, and scoring MIXED would understate a genuine and significant alignment. This is the §281 case — direction and instrument diverging — and §281 says to say so in the briefing rather than only in a tooltip, which has been done.\n\nDRAFTING NOTE for whoever reads the text next: recital (91a) states that 'the trigger should be available two times in 12 months', while the operative paragraph 2 permits re-triggering after roughly one month. Only the operative text binds (§180); the recital carries no legal force and the two do not describe the same mechanism. Expect this to be raised in committee.\n\n**NOTE ADDED 27 September 2026 — no score change, but the gap is now measurable on both sides.** E.ON's September amendment paper replaces the “around 1.5, preliminary” working figure with a tabled new point (32a): **factor 1,5** over a **four-month** observation window against the **two-year** reference period, the release held at **75 million** and declining 4%/yr from 2029, and **no intake limb**. Liese's Amendment 78: **+25%** over **three months** against a **one-year** reference, release cut to **25 million**, and a **new downward limb** placing 25 million into the reserve on a fall of more than 25%. So he is far **more** sensitive than E.ON asks on the trigger, **less** generous by two thirds on the volume, and adds the intake limb §189 records E.ON as explicitly not wanting. Intensity stays 2 — the ask is delivered and something E.ON declined to ask for is delivered with it, which is the definition of partial — and the reasoning is written here so it is audited rather than re-litigated."
+          },
+          "beccs": {
+            "stance": "support",
+            "confidence": 3,
+            "source": "ENVI_PR(2026)791996 of 15 September 2026 — Peter Liese's draft report on COM(2026) 616, read in full via the DOCX route",
+            "url": "https://www.europarl.europa.eu/doceo/document/ENVI-PR-791996_EN.html",
+            "note": "**First scoring — Liese held no `beccs` row, so §177 does not engage and this is §166 applied fresh.** Amendment 32 brings the auctioning that funds permanent removals forward from 2031 to **2029**; Amendment 35 inserts a new Art. 9c(4a) requiring a delegated act by 31 December 2028 on additional technical criteria and “enforceable long-term monitoring, reporting, verification, **permanence and liability** requirements, including for **reversals**”. Both run with E.ON's ask, whose core is integrity: 250 million allowances are added to the cap on the promise of 250 Mt of removals, so the removals must be real and permanent or the cap has been loosened for nothing. **Intensity 2, not 3, because the funding limb is absent** — E.ON asks for long-term purchase agreements and for complementary Union funding, including through the Industrial Decarbonisation Bank, where auction revenues fall short of procuring the full 250 Mt. Liese tables neither. Confidence 3: his own numbered amendments.",
+            "intensity": 2
           }
         },
         "weight": 1,
@@ -19319,7 +19782,7 @@ DOSSIERS = {
   }
 ],
   "overview": {
-    "background": "On 17 July 2026 the Commission tabled the ETS Directive review, COM(2026) 616 (2026/0212(COD)), a companion 2026-2030 heat and fuel (‘fallback’) benchmarks proposal, COM(2026) 619 (2026/0211(COD)), and a maritime MRV and FuelEU alignment Regulation, COM(2026) 620 (2026/0210(COD)) — setting the Phase 5 (2031-2040) framework against the 90%-by-2040 target. In the primary text: the LRF falls to 3.7%/yr for 2031-2035 and 1.7% from 2036 (Art. 9); free allocation runs to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (Art. 10a); MSR automatic invalidation ends (the MSR-invalidation file, 2026/0085(COD)); the Investment Booster provides 400m EUAs via the new Industrial Decarbonisation Bank (Art. 10cc). Art. 29a, the price-containment trigger, is untouched in the proposal — the central gap against E.ON’s ask. ETS1 and ETS2 share the same Directive, so every amendment must be checked for ETS2 spillover (Tier 0). On 15 September the plenary kept invalidation on that file at 650m from 1 February 2027. On 16 September Coreper agreed the Council’s benchmarks mandate, ST 13134/2026; the reserve mandate failed there and was agreed on 23 September as ST 13517/2026: invalidation suspended to end-2030, then 800m from 2031. Both co-legislators therefore keep invalidation, and the gap is a threshold and a date, not an instrument. The review and the maritime Regulation were referred to ENVI on 17 September. Liese’s draft report, PE791.996 of 15 September, tables 85 amendments: an LRF of 3.4% then 2.3%, the revenue earmark raised from 50% to 75%, the waste-incineration opt-out deleted, and Art. 29a reopened as a symmetric ±25% trigger; the ENVI amendment deadline is 6 October. The Presidency still has no compromise text: its Working Party takes the review alone on 28 September, the month's last session on the file, again as examination of the Commission's own proposal.",
+    "background": "On 17 July 2026 the Commission tabled the ETS Directive review, COM(2026) 616 (2026/0212(COD)), a companion 2026-2030 heat and fuel (‘fallback’) benchmarks proposal, COM(2026) 619 (2026/0211(COD)), and a maritime MRV and FuelEU alignment Regulation, COM(2026) 620 (2026/0210(COD)) — setting the Phase 5 (2031-2040) framework against the 90%-by-2040 target. In the primary text: the LRF falls to 3.7%/yr for 2031-2035 and 1.7% from 2036 (Art. 9); free allocation runs to 2038, conditional from 2031 on a verified Invest in EU decarbonisation plan (Art. 10a); MSR automatic invalidation ends (the MSR-invalidation file, 2026/0085(COD)). Art. 29a, the price-containment trigger, is untouched in the proposal — the central gap against E.ON’s ask. ETS1 and ETS2 share the same Directive, so every amendment must be checked for ETS2 spillover (Tier 0). On 15 September the plenary kept invalidation on that file at 650m from 1 February 2027. On 16 September Coreper agreed the Council’s benchmarks mandate, ST 13134/2026; the reserve mandate failed there and was agreed on 23 September as ST 13517/2026: invalidation suspended to end-2030, then 800m from 2031. Both co-legislators therefore keep invalidation, and the gap is a threshold and a date, not an instrument. Liese’s draft report, PE791.996 of 15 September, tables 85 amendments: an LRF of 3.4% then 2.3%, the revenue earmark raised from 50% to 75%, the waste-incineration opt-out deleted, and Art. 29a reopened as a symmetric ±25% trigger; the ENVI amendment deadline is 6 October. ITRE's draft opinion (Ratas, 18 Sep) deletes the conditionality regime, sets the LRF at 3,2%/2,2% and closes for amendments on 28 September. The Presidency still has no compromise text: its Working Party takes the review alone on 28 September, the month's last session on the file, again as examination of the Commission's own proposal.",
     "milestones": [
       {
         "date": "2026-07-17",
@@ -19866,9 +20329,26 @@ DOSSIERS = {
         "tlLabel": "ENVI amendment deadline",
         "tlDateText": "6 Oct (deadline)",
         "tlTierWhy": "Tier 2: a deadline for tabling amendments is a tracked event, not one of the formal steps of the ordinary legislative procedure that tier 1 is reserved for. The draft report it runs from and the committee report vote it runs to are both tier 1; the deadline between them is not. Not provisional — it is published on the committee register, not forecast."
+      },
+      {
+        "date": "2026-09-18 → 2026-09-28 (amendment deadline)",
+        "title": "ITRE tables its draft opinion on the ETS review — and it deletes the conditionality regime",
+        "status": "**Published 18 September 2026, amendment deadline 28 September 2026.** `ITRE_PA(2026)792091` (PE792.091v01-00), draft opinion of the Committee on Industry, Research and Energy for ENVI on COM(2026) 616, rapporteur for opinion **Jüri Ratas** (EPP, EE), **33 amendments**.",
+        "text": "**The five planks.** Amendment 28 **deletes Art. 10a(3a) to (3e)** — the whole investment-conditionality regime — with recitals 44 to 48 deleted to match; on the rapporteur's own account this removes “strict conditionality rules for the phase-out of free allocation (the ‘80/20’ provision), maintaining only a targeted anti-relocation rule”. Amendment 26 sets the **CBAM factor at 70% in 2030, 58% in 2031 and 40% in 2032** — **the identical three numbers Liese tables in Amendment 46 of the lead report**, arrived at independently in the other committee. Amendment 27 adds a **biennial per-sector CBAM effectiveness assessment** from 30 November 2028 which, on the justification's wording, must pause or reverse the phase-out if the indicators show it impairing EU production or export competitiveness. Amendment 15 proposes a **third LRF: 3,2% for 2031-2035 then 2,2%**, against the Commission's 3,7%/1,7% and Liese's 3,4%/2,3%. Amendments 16, 19, 21 and 22 loosen the international-credit and removals rules — a fixed 260 million rather than “up to”, removals auctioning from **2028**, a shortfall mechanism — while making unused allowances **cancelled** rather than recycled.\n\n**Directly relevant to E.ON: Amendment 25** adds **district heating systems** to the earmarked-revenue eligible-use list, at the same 75% level Liese proposes. **Amendments 31 and 32** delete the general ‘do no significant harm’ requirement on Modernisation Fund, Innovation Fund and Industrial Decarbonisation Bank revenues and replace it with a capped, presumption-based version.\n\n**An opinion binds nothing.** It is addressed to the lead committee and Rule 58 governs what ENVI must do with it. Its weight here is political — an EPP rapporteur in the industry committee giving the lead EPP rapporteur cover to move in the same direction — and procedural, because it carries **its own amendment deadline**.\n\n**This document was missed for nine days and the reason is structural (§329).** OEIL had not registered it: the documentation gateway on 2026/0212(COD), read on 25 September with `meta available: 25-09-2026`, listed only the ENVI draft report. And the daily sweep reads **ENVI** Latest Documents, never **ITRE**'s. A grep of `data.json`, `stances.json` and the 798 KB run log returned **zero** hits for “draft opinion”. The standing rule agreed with Jonas the same day: read the committees for opinion off the procedure file and sweep each one's own register.",
+        "url": "https://www.europarl.europa.eu/doceo/document/ITRE-PA-792091_EN.html",
+        "institution": "ep",
+        "occurred": false,
+        "mid": "ms-itre-opinion",
+        "tlTier": 2,
+        "tlStart": "2026-09-18",
+        "tlEnd": "2026-09-28",
+        "tlProvisional": false,
+        "tlLabel": "ITRE draft opinion",
+        "tlDateText": "18 Sep → 28 Sep (AM deadline)",
+        "tlTierWhy": "Tier 2: a committee opinion is not a step of the ordinary legislative procedure — it is addressed to the lead committee and binds nothing under Rule 58 — but it is a tracked event with its own amendment deadline. The lead committee's draft report is tier 1 (`ms-liese-report`); an opinion committee's draft opinion is not."
       }
     ],
-    "milestonesLastChecked": "2026-09-25",
+    "milestonesLastChecked": "2026-09-27",
     "publicEvents": [
       {
         "date": "2026-10-01",
