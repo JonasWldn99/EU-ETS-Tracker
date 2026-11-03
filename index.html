@@ -1329,10 +1329,10 @@ function toggleExpand(entityId) {
   renderInstitutionView();
 }
 
-// EUA price chart: rolling window selector ('1m' default, '6m' on request). Same card, same
+// EUA price chart: rolling window selector ('6m' default since 3 Nov 2026, so the proposal marker stays visible; '1m' on request). Same card, same
 // axis/label styling either way -- only the window length (and therefore the tick granularity
 // and the price axis zoom level) changes.
-let euaChartWindow = '1m';
+let euaChartWindow = '6m';
 
 function setEuaChartWindow(w) {
   if (euaChartWindow === w) return;
